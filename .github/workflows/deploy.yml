@@ -30,6 +30,8 @@ jobs:
 
       - name: Install tools
         run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1   # the website build does not need the Windows app files
 
       - name: Download AI runtime and model into www/
         run: npm run setup

@@ -28,6 +28,7 @@ Windows, Node.js v24.22.0, npm 11.19.1, Git 2.56.0, VS Code. onnxruntime-web v1.
 ```
 bg-remover/
 ├── .github/workflows/deploy.yml   builds and publishes to GitHub Pages
+├── electron/                      Windows app: main.js (window) + server.js (local server for www)
 ├── scripts/setup.js               copies AI runtime + downloads model into www/
 ├── package.json
 ├── .gitignore                     ignores node_modules, www/ort, www/models
@@ -66,14 +67,14 @@ npm start        (opens http://localhost:5173)
 - **Task 1** (done): installed Node, npm, Git, VS Code.
 - **Task 2** (done): first working page. Fix 1: used the wasm-only runtime build (`ort.wasm.min.js`) and an absolute path for `wasmPaths`. Tested: 1.3 s on a portrait photo.
 - **Task 3** (done, slider confirmed): before/after slider, Save PNG, drag and drop, paste, 2048 px cap.
-- **Task 4** (code delivered, awaiting test): background color choice (transparent, 6 presets, custom picker) with export on the chosen color; PWA files (manifest, sw.js, icons, install button); `[hidden]` CSS fix; `deploy.yml` for GitHub Pages.
-
+- **Task 4** (done): background color choice (transparent, 6 presets, custom picker) with export on the chosen color; PWA files (manifest, sw.js, icons, install button); `[hidden]` CSS fix; `deploy.yml` for GitHub Pages. Pushed to https://github.com/NuroTraders/bg-remover (branch main). Fixes on the way: wrong remote URL (placeholder `YOURUSERNAME`), git author name, missing `package-lock.json` (Actions needs it, `npm ci`). **Live: https://nurotraders.github.io/bg-remover/** (tested: 1.4 s, color picker works). Not yet confirmed: Save PNG on the live site, install button, offline reload.
+- **Task 5a** (code delivered, awaiting test): Windows app in dev mode. `electron/main.js` opens a window; `electron/server.js` serves `www/` on 127.0.0.1 (random port, this computer only) because the model and wasm files cannot load from `file://`. `package.json` gets `"main"` and `npm run desktop`. `app.js` skips the service worker inside Electron. `deploy.yml` skips the Electron download on the website build. Run: `npm install --save-dev electron` then `npm run desktop`.
 ## 9. Next steps
-1. Test Task 4 locally (color picker, Save, install/offline).
-2. Push to GitHub, enable Pages, confirm the live PWA.
-3. Add README and credits (U2Net / U2Netp, Apache 2.0).
-4. Windows app (Electron), then Android app (Capacitor).
-5. GitHub Actions to build EXE and APK into Releases.
+1. Test Task 5a (`npm run desktop`), then commit `package.json` + `package-lock.json` together and push.
+2. Task 5b: build the Windows installer and portable EXE with electron-builder.
+3. Task 6: Android app with Capacitor (Save PNG needs another method there).
+4. GitHub Actions to build EXE and APK into Releases.
+5. README and credits (U2Net / U2Netp, Apache 2.0).
 6. Version 2: image or gradient backgrounds, eraser/restore brush, High Quality model, batch.
 
 ## 10. How to resume

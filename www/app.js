@@ -295,8 +295,9 @@ window.addEventListener("appinstalled", () => {
 });
 
 // The service worker saves the app and the AI model so it works offline.
-// Only on http/https (not inside the Windows or Android wrapper apps).
-if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+// Only on http/https, and not inside the Windows app (it already has everything locally).
+const insideDesktopApp = navigator.userAgent.includes("Electron");
+if ("serviceWorker" in navigator && location.protocol.startsWith("http") && !insideDesktopApp) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js").catch((err) => {
       console.warn("Service worker not registered:", err);
