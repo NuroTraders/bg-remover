@@ -16,7 +16,7 @@ Everything must be free. One web codebase (`www/`) serves all three.
 | Core | HTML + CSS + JavaScript, no framework |
 | AI | onnxruntime-web (wasm, single thread) + U2Netp model (Apache 2.0, about 4.5 MB) |
 | Avoid | RMBG-1.4 (non-commercial license) |
-| Hosting | GitHub Pages via GitHub Actions |
+| Hosting | GitHub Pages via GitHub Actions, plus Cloudflare (faster in Bangladesh, free) |
 | Windows | Electron (planned) |
 | Android | Capacitor (planned) |
 | Work rules | Claude writes all code. Only changed or new files are delivered, with their folder. One HANDOVER.md only |
@@ -28,6 +28,7 @@ Windows, Node.js v24.22.0, npm 11.19.1, Git 2.56.0, VS Code. onnxruntime-web v1.
 ```
 bg-remover/
 ├── .github/workflows/deploy.yml   builds and publishes to GitHub Pages
+├── wrangler.jsonc                 Cloudflare: serve the www folder as static assets
 ├── electron/                      Windows app: main.js (window) + server.js (local server for www)
 ├── scripts/setup.js               copies AI runtime + downloads model into www/
 ├── package.json
@@ -69,6 +70,9 @@ npm start        (opens http://localhost:5173)
 - **Task 3** (done, slider confirmed): before/after slider, Save PNG, drag and drop, paste, 2048 px cap.
 - **Task 4** (done): background color choice (transparent, 6 presets, custom picker) with export on the chosen color; PWA files (manifest, sw.js, icons, install button); `[hidden]` CSS fix; `deploy.yml` for GitHub Pages. Pushed to https://github.com/NuroTraders/bg-remover (branch main). Fixes on the way: wrong remote URL (placeholder `YOURUSERNAME`), git author name, missing `package-lock.json` (Actions needs it, `npm ci`). **Live: https://nurotraders.github.io/bg-remover/** (tested: 1.4 s, color picker works). Not yet confirmed: Save PNG on the live site, install button, offline reload.
 - **Task 5a** (code delivered, awaiting test): Windows app in dev mode. `electron/main.js` opens a window; `electron/server.js` serves `www/` on 127.0.0.1 (random port, this computer only) because the model and wasm files cannot load from `file://`. `package.json` gets `"main"` and `npm run desktop`. `app.js` skips the service worker inside Electron. `deploy.yml` skips the Electron download on the website build. Run: `npm install --save-dev electron` then `npm run desktop`.
+- **Task 5a result:** Windows app (`npm run desktop`) opens and shows "Ready" after `npm run setup` was run in the project folder. Photo and Save PNG test not yet reported.
+- **Task 5c** (in progress): Cloudflare hosting. The first load of the GitHub Pages site felt slow (about 19 MB download). Cloudflare created a **Workers** project (not classic Pages) from NuroTraders/bg-remover. Its first build had Build command `None` and Deploy command `npx wrangler deploy`, with no assets folder configured. Fix: add `wrangler.jsonc` (assets directory `./www`) to the repo root, set Build command `npm ci && npm run setup`, add build variable `ELECTRON_SKIP_BINARY_DOWNLOAD=1`, keep Deploy command `npx wrangler deploy`. Then compare load speed with the GitHub Pages site.
+
 ## 9. Next steps
 1. Test Task 5a (`npm run desktop`), then commit `package.json` + `package-lock.json` together and push.
 2. Task 5b: build the Windows installer and portable EXE with electron-builder.
