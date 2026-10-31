@@ -9,7 +9,10 @@ const { startServer } = require("./server");
 let server = null;
 
 async function createWindow() {
-  const wwwDir = path.resolve(__dirname, "..", "www");
+  // installed app: www sits next to the app in "resources"; during development: the project folder
+  const wwwDir = app.isPackaged
+    ? path.join(process.resourcesPath, "www")
+    : path.resolve(__dirname, "..", "www");
   const started = await startServer(wwwDir);
   server = started.server;
   const origin = "http://127.0.0.1:" + started.port;

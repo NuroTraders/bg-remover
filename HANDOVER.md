@@ -30,6 +30,9 @@ bg-remover/
 ├── .github/workflows/deploy.yml   builds and publishes to GitHub Pages
 ├── wrangler.jsonc                 Cloudflare: serve the www folder as static assets
 ├── electron/                      Windows app: main.js (window) + server.js (local server for www)
+├── electron-builder.yml           installer + portable EXE settings
+├── build/icon.ico                 app icon for the EXE
+├── dist/                          build output (not committed)
 ├── scripts/setup.js               copies AI runtime + downloads model into www/
 ├── package.json
 ├── .gitignore                     ignores node_modules, www/ort, www/models
@@ -70,16 +73,17 @@ npm start        (opens http://localhost:5173)
 - **Task 3** (done, slider confirmed): before/after slider, Save PNG, drag and drop, paste, 2048 px cap.
 - **Task 4** (done): background color choice (transparent, 6 presets, custom picker) with export on the chosen color; PWA files (manifest, sw.js, icons, install button); `[hidden]` CSS fix; `deploy.yml` for GitHub Pages. Pushed to https://github.com/NuroTraders/bg-remover (branch main). Fixes on the way: wrong remote URL (placeholder `YOURUSERNAME`), git author name, missing `package-lock.json` (Actions needs it, `npm ci`). **Live: https://nurotraders.github.io/bg-remover/** (tested: 1.4 s, color picker works). Not yet confirmed: Save PNG on the live site, install button, offline reload.
 - **Task 5a** (code delivered, awaiting test): Windows app in dev mode. `electron/main.js` opens a window; `electron/server.js` serves `www/` on 127.0.0.1 (random port, this computer only) because the model and wasm files cannot load from `file://`. `package.json` gets `"main"` and `npm run desktop`. `app.js` skips the service worker inside Electron. `deploy.yml` skips the Electron download on the website build. Run: `npm install --save-dev electron` then `npm run desktop`.
-- **Task 5a result:** Windows app (`npm run desktop`) opens and shows "Ready" after `npm run setup` was run in the project folder. Photo and Save PNG test not yet reported.
-- **Task 5c** (in progress): Cloudflare hosting. The first load of the GitHub Pages site felt slow (about 19 MB download). Cloudflare created a **Workers** project (not classic Pages) from NuroTraders/bg-remover. Its first build had Build command `None` and Deploy command `npx wrangler deploy`, with no assets folder configured. Fix: add `wrangler.jsonc` (assets directory `./www`) to the repo root, set Build command `npm ci && npm run setup`, add build variable `ELECTRON_SKIP_BINARY_DOWNLOAD=1`, keep Deploy command `npx wrangler deploy`. Then compare load speed with the GitHub Pages site.
+- **Task 5a** (done): Windows app (`npm run desktop`) works, tested by the user (after `npm run setup` was run in the project folder).
+- **Task 5c** (done): Cloudflare hosting. The first load of the GitHub Pages site felt slow (about 19 MB download). Cloudflare created a **Workers** project (not classic Pages) from NuroTraders/bg-remover. Its first build had Build command `None` and Deploy command `npx wrangler deploy`, with no assets folder configured. Fix: add `wrangler.jsonc` (assets directory `./www`) to the repo root, set Build command `npm ci && npm run setup`, add build variable `ELECTRON_SKIP_BINARY_DOWNLOAD=1`, keep Deploy command `npx wrangler deploy`. **Result: loads and says Ready in about 2 to 4 seconds, much faster than GitHub Pages.** Cloudflare now rebuilds on every push to main. Cloudflare is the main web address to share; GitHub Pages stays as a backup.
+
+- **Task 5b** (code delivered, awaiting test): Windows installer and portable EXE with electron-builder. `electron-builder.yml` packs only `electron/` code; `www/` is copied next to the app as plain files (`extraResources`), so `main.js` reads it from `process.resourcesPath/www` when installed (`app.isPackaged`). Targets: NSIS installer (`BG-Remover-Setup-0.1.0.exe`, user can choose folder) and portable (`BG-Remover-Portable-0.1.0.exe`). Checked in a Linux test build: config loads and `www/models` + `www/ort` end up in `resources/www`. Tool versions seen: electron 45.2.1, electron-builder 26.18.0. Build: `npm install --save-dev electron-builder`, `npm run setup`, `npx electron-builder --win`. Known gotchas: unsigned EXE shows a Windows SmartScreen warning; if the build errors about a symbolic link, turn on Windows Developer Mode or run the terminal as administrator; "author is missed in package.json" is only a warning.
 
 ## 9. Next steps
-1. Test Task 5a (`npm run desktop`), then commit `package.json` + `package-lock.json` together and push.
-2. Task 5b: build the Windows installer and portable EXE with electron-builder.
-3. Task 6: Android app with Capacitor (Save PNG needs another method there).
-4. GitHub Actions to build EXE and APK into Releases.
-5. README and credits (U2Net / U2Netp, Apache 2.0).
-6. Version 2: image or gradient backgrounds, eraser/restore brush, High Quality model, batch.
+1. Test Task 5b: build and run the installer and the portable EXE, then commit (without `dist/`).
+2. Task 6: Android app with Capacitor (Save PNG needs another method there).
+3. GitHub Actions to build EXE and APK into Releases.
+4. README and credits (U2Net / U2Netp, Apache 2.0).
+5. Version 2: image or gradient backgrounds, eraser/restore brush, High Quality model, batch.
 
 ## 10. How to resume
 Tell Claude where you are (for example "Task 4 tested, continue") and send a screenshot or error text if something failed.

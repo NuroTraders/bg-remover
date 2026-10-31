@@ -1,0 +1,36 @@
+# Settings for building the Windows installer and the portable .exe
+# Build with:  npx electron-builder --win      (run  npm run setup  first)
+
+appId: com.nurotraders.bgremover
+productName: BG Remover
+copyright: NuroTraders
+
+directories:
+  output: dist
+  buildResources: build
+
+# the app code only; the website files go in as plain files (see extraResources)
+files:
+  - electron/**/*
+  - package.json
+  - "!node_modules/**/*"
+
+extraResources:
+  - from: www
+    to: www
+
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: BG-Remover-Setup-${version}.${ext}
+
+portable:
+  artifactName: BG-Remover-Portable-${version}.${ext}
