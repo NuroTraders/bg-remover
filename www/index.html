@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BG Remover</title>
+  <meta name="description" content="Free, offline background remover" />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>BG Remover</h1>
+    <p>Free, offline background removal</p>
+  </header>
+
+  <main>
+    <div class="buttons">
+      <label class="btn" for="file">Choose image</label>
+      <input id="file" type="file" accept="image/*" hidden />
+      <button id="save" class="btn btn-green" disabled>Save PNG</button>
+      <button id="install" class="btn btn-dark" hidden>Install app</button>
+    </div>
+
+    <p id="status">Loading AI model...</p>
+    <p class="hint">You can also drag an image onto this page or press Ctrl+V to paste one.</p>
+
+    <!-- background choices (shown after an image is processed) -->
+    <div id="bg-panel" class="bg-panel" hidden>
+      <span class="bg-label">Background:</span>
+      <button class="swatch swatch-transparent active" data-color="transparent" title="Transparent" aria-label="Transparent"></button>
+      <button class="swatch" data-color="#ffffff" style="background:#ffffff" title="White" aria-label="White"></button>
+      <button class="swatch" data-color="#000000" style="background:#000000" title="Black" aria-label="Black"></button>
+      <button class="swatch" data-color="#ef4444" style="background:#ef4444" title="Red" aria-label="Red"></button>
+      <button class="swatch" data-color="#2563eb" style="background:#2563eb" title="Blue" aria-label="Blue"></button>
+      <button class="swatch" data-color="#16a34a" style="background:#16a34a" title="Green" aria-label="Green"></button>
+      <button class="swatch" data-color="#facc15" style="background:#facc15" title="Yellow" aria-label="Yellow"></button>
+      <input id="bg-custom" class="custom-color" type="color" value="#ff8800" title="Pick any color" aria-label="Custom color" />
+    </div>
+
+    <div id="viewer" class="viewer" hidden>
+      <!-- bottom layer: the result (checkerboard or chosen color behind it) -->
+      <canvas id="result" class="checker"></canvas>
+      <!-- top layer: the original, cut off by the slider -->
+      <canvas id="original"></canvas>
+      <span class="tag tag-left">Original</span>
+      <span class="tag tag-right">Result</span>
+    </div>
+
+    <input id="slider" type="range" min="0" max="100" value="50" hidden />
+  </main>
+
+  <div id="drop-overlay" hidden>Drop image here</div>
+
+  <script src="ort/ort.wasm.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
