@@ -72,10 +72,8 @@
           <span class="tag tag-left">Original</span>
           <span class="tag tag-right">Result</span>
           
-          <!-- Brush Overlay -->
           <canvas id="brush-layer"></canvas>
           
-          <!-- Floating Brush Toolbar -->
           <div id="brush-toolbar" class="brush-toolbar" hidden>
             <button id="brush-restore" class="btn btn-small" title="Restore Subject">Restore</button>
             <button id="brush-erase" class="btn btn-small" title="Erase Background">Erase</button>
@@ -116,9 +114,7 @@
           <button class="swatch" data-color="#2563eb" style="background:#2563eb" title="Blue" aria-label="Blue"></button>
           <button class="swatch" data-color="#16a34a" style="background:#16a34a" title="Green" aria-label="Green"></button>
           <button class="swatch" data-color="#facc15" style="background:#facc15" title="Yellow" aria-label="Yellow"></button>
-          
           <button class="swatch swatch-blur" data-color="blur" title="Blur original background" aria-label="Blur background">Blur</button>
-          
           <input id="bg-custom" class="custom-color" type="color" value="#ff8800" title="Pick any color" aria-label="Custom color" />
         </div>
         <div class="bg-image-row">
@@ -141,7 +137,6 @@
           <button id="tune-reset" class="btn btn-secondary btn-small" type="button">Reset</button>
           <button id="tune-all" class="btn btn-secondary btn-small" type="button">Apply to all images</button>
         </div>
-        
         <div class="button-row" style="margin-top: 15px; border-top: 1px solid var(--line); padding-top: 15px;">
           <button id="toggle-brush" class="btn btn-block" type="button">✏️ Open Touch-up Brush</button>
         </div>
@@ -178,8 +173,19 @@
           <label for="target-kb">Max file size</label>
           <div class="range-line"><input id="target-kb" type="number" min="10" step="10" placeholder="no limit" /><span class="muted small">KB</span></div>
         </div>
+        
+        <!-- Phase 4: Custom File Naming -->
+        <div class="row">
+          <label for="name-pattern">File name</label>
+          <input id="name-pattern" type="text" placeholder="{name}-nobg" title="Use {name} for the original file name" />
+        </div>
+
         <p id="estimate" class="estimate muted small"></p>
+        
+        <!-- Phase 4: Action Buttons -->
         <button id="save" class="btn btn-ok btn-block" disabled>Save this image</button>
+        <button id="copy" class="btn btn-secondary btn-block" disabled>📋 Copy to Clipboard</button>
+        <button id="share" class="btn btn-secondary btn-block" hidden>📱 Share</button>
         <button id="save-all" class="btn btn-secondary btn-block" hidden>Save all as ZIP</button>
       </section>
     </aside>
@@ -196,7 +202,7 @@
         <li><strong>Choose AI:</strong> The "Fast" model is built-in and instant. For perfect edges on hair and complex items, download the "High quality" model (requires WebGPU).</li>
         <li><strong>Adjust:</strong> Use the fine-tune sliders if the AI missed a spot. You can also change the background color, blur it, or upload a new image.</li>
         <li><strong>Brush:</strong> If the AI still missed something, use the Touch-up Brush to manually restore or erase parts.</li>
-        <li><strong>Save:</strong> Choose PNG for transparency, JPG for solid backgrounds, and click "Save".</li>
+        <li><strong>Save:</strong> Choose PNG for transparency, JPG for solid backgrounds, and click "Save". You can also copy it directly to your clipboard.</li>
       </ol>
     </div>
   </dialog>
@@ -204,7 +210,7 @@
   <dialog id="dialog-about" class="modal">
     <div class="modal-head"><h2>About BG Remover</h2><button class="modal-close">×</button></div>
     <div class="modal-body">
-      <p><strong>Version 1.2.0</strong></p>
+      <p><strong>Version 1.3.0</strong></p>
       <p>A free, open-source background removal tool that runs 100% locally on your device.</p>
       <p><strong>Privacy First:</strong> Your photos are never uploaded to a server. The AI runs directly inside your browser or desktop app using ONNX Runtime and WebGPU.</p>
       <p><strong>Credits:</strong></p>
@@ -220,6 +226,12 @@
   <dialog id="dialog-changelog" class="modal">
     <div class="modal-head"><h2>Change Log</h2><button class="modal-close">×</button></div>
     <div class="modal-body">
+      <h3>v1.3.0 - Phase 4 (Export & Workflow)</h3>
+      <ul>
+        <li>Added <strong>Copy to Clipboard</strong> button.</li>
+        <li>Added <strong>Custom File Naming</strong> pattern.</li>
+        <li>Added native <strong>Share</strong> button for compatible devices.</li>
+      </ul>
       <h3>v1.2.0 - Phase 2 (Core UX Wins)</h3>
       <ul>
         <li>Added <strong>Touch-up Brush</strong> to manually Restore or Erase parts of the image.</li>
@@ -229,11 +241,6 @@
       <ul>
         <li>Added Navigation Menu (Help, About, Contact, Changelog).</li>
         <li>Added manual Light/Dark theme toggle.</li>
-      </ul>
-      <h3>v1.0.0 - Task 10 (AI Models)</h3>
-      <ul>
-        <li>Added High Quality (BiRefNet 100MB) and Compatible (192MB) models.</li>
-        <li>Added WebGPU support and automatic fallback to Fast model.</li>
       </ul>
     </div>
   </dialog>

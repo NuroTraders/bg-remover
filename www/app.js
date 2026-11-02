@@ -1,4 +1,4 @@
-// BG Remover - Phase 3 (Performance & AI Check)
+// BG Remover - Phase 4 (Export & Workflow)
 const MODEL_PATH = "models/u2netp.onnx";
 const SIZE = 320;
 const MAX_SIDE = 2560;
@@ -61,8 +61,11 @@ const qualityInput = $("quality");
 const qualityOut = $("quality-out");
 const maxSideSel = $("max-side");
 const targetKb = $("target-kb");
+const namePatternInput = $("name-pattern");
 const estimateEl = $("estimate");
 const saveBtn = $("save");
+const copyBtn = $("copy");
+const shareBtn = $("share");
 const saveAllBtn = $("save-all");
 const dropOverlay = $("drop-overlay");
 const modelSelect = $("model-select");
@@ -94,7 +97,7 @@ let currentId = null;
 let view = { id: null, source: null, blurUrl: null };
 let selectToken = 0;
 const bg = { type: "transparent", color: "#ffffff", image: null, imageUrl: "", blurUrl: null };
-const exp = { format: "png", quality: 90, maxSide: 0, targetKB: 0 };
+const exp = { format: "png", quality: 90, maxSide: 0, targetKB: 0, namePattern: "{name}-nobg" };
 
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 const secs = (ms) => (ms / 1000).toFixed(1);
@@ -121,6 +124,7 @@ function loadSettings() {
       if (saved.exp.quality >= 40 && saved.exp.quality <= 100) exp.quality = Number(saved.exp.quality);
       if (saved.exp.maxSide >= 0) exp.maxSide = Number(saved.exp.maxSide);
       if (saved.exp.targetKB >= 0) exp.targetKB = Number(saved.exp.targetKB);
+      if (saved.exp.namePattern) exp.namePattern = saved.exp.namePattern;
     }
   } catch (e) { /* ignore */ }
 }
@@ -137,7 +141,6 @@ async function loadModel() {
   try {
     ort.env.wasm.wasmPaths = new URL("ort/", document.baseURI).href;
     
-    // Phase 3: Multi-threading check
     if (self.crossOriginIsolated) {
       ort.env.wasm.numThreads = Math.min(4, navigator.hardwareConcurrency || 2);
       console.log(`Multi-threading enabled with ${ort.env.wasm.numThreads} threads.`);
@@ -384,6 +387,8 @@ function showWorkspace(show) {
   dropzone.hidden = show;
   panel.classList.toggle("disabled", !show);
   saveBtn.disabled = !show;
+  copyBtn.disabled = !show;
+  shareBtn.disabled = !show;
 }
 
 function updateEmptyState() {
@@ -766,14 +771,19 @@ async function encodeImage(canvas, format, quality, targetBytes) {
   return last;
 }
 
+function getExportName(item, ext) {
+  let base = exp.namePattern || "{name}-nobg";
+  base = base.replace(/{name}/g, baseName(item.name));
+  return base + "." + ext;
+}
+
 async function exportItem(item) {
   const canvas = await renderForExport(item);
   const target = exp.targetKB > 0 ? exp.targetKB * 1024 : 0;
   const res = await encodeImage(canvas, exp.format, exp.quality, target);
   const type = res.blob.type;
   const ext = type === "image/webp" ? "webp" : type === "image/jpeg" ? "jpg" : "png";
-  const plain = bg.type === "transparent" && exp.format !== "jpg";
-  return { blob: res.blob, res, name: baseName(item.name) + (plain ? "-nobg." : "-newbg.") + ext };
+  return { blob: res.blob, res, name: getExportName(item, ext) };
 }
 
 let estTimer = null;
@@ -809,6 +819,7 @@ function syncExportControls() {
   qualityOut.textContent = exp.quality + "%";
   maxSideSel.value = String(exp.maxSide);
   targetKb.value = exp.targetKB > 0 ? String(exp.targetKB) : "";
+  namePatternInput.value = exp.namePattern;
   qualityRow.hidden = exp.format === "png";
   jpgNote.hidden = !(exp.format === "jpg" && bg.type === "transparent");
 }
@@ -825,6 +836,10 @@ targetKb.addEventListener("input", () => {
   exp.targetKB = v > 0 ? v : 0;
   saveSettings();
   scheduleEstimate();
+});
+namePatternInput.addEventListener("input", () => {
+  exp.namePattern = namePatternInput.value || "{name}-nobg";
+  saveSettings();
 });
 
 (function checkWebp() {
@@ -868,6 +883,63 @@ saveBtn.addEventListener("click", async () => {
   }
 });
 
+copyBtn.addEventListener("click", async () => {
+  const item = currentItem();
+  if (!item) return;
+  copyBtn.disabled = true;
+  try {
+    setStatus("Copying to clipboard...");
+    await nextPaint();
+    const canvas = await renderForExport(item);
+    canvas.toBlob(async (blob) => {
+      try {
+        // Clipboard API mostly supports PNG for images across browsers
+        const pngBlob = canvas.toDataURL('image/png');
+        const res = await fetch(pngBlob);
+        const data = [new ClipboardItem({ "image/png": await res.blob() })];
+        await navigator.clipboard.write(data);
+        setStatus("Copied to clipboard!");
+      } catch (err) {
+        setStatus("Failed to copy image: " + err.message);
+      } finally {
+        copyBtn.disabled = false;
+      }
+    }, 'image/png');
+  } catch (err) {
+    console.error(err);
+    setStatus("Could not copy: " + err.message);
+    copyBtn.disabled = false;
+  }
+});
+
+// Web Share API
+if (navigator.share && navigator.canShare) {
+  shareBtn.hidden = false;
+}
+shareBtn.addEventListener("click", async () => {
+  const item = currentItem();
+  if (!item) return;
+  try {
+    setStatus("Preparing to share...");
+    const out = await exportItem(item);
+    const file = new File([out.blob], out.name, { type: out.blob.type });
+    if (navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: "Background Removed Image",
+      });
+      setStatus("Shared successfully.");
+    } else {
+      setStatus("This device cannot share this file type.");
+    }
+  } catch (err) {
+    if (err.name !== "AbortError") {
+      console.error(err);
+      setStatus("Could not share: " + err.message);
+    }
+  }
+});
+
 function uniqueName(name, used) {
   if (!used.has(name)) { used.add(name); return name; }
   const dot = name.lastIndexOf(".");
@@ -884,6 +956,8 @@ saveAllBtn.addEventListener("click", async () => {
   if (!list.length) return;
   saveAllBtn.disabled = true;
   saveBtn.disabled = true;
+  copyBtn.disabled = true;
+  shareBtn.disabled = true;
   try {
     const used = new Set();
     const files = [];
@@ -903,6 +977,8 @@ saveAllBtn.addEventListener("click", async () => {
   } finally {
     saveAllBtn.disabled = false;
     saveBtn.disabled = !currentItem();
+    copyBtn.disabled = !currentItem();
+    shareBtn.disabled = !currentItem();
   }
 });
 
@@ -1109,7 +1185,6 @@ async function getModelBytes(def, st) {
   return bytes;
 }
 
-// Phase 3: GPU Check
 async function checkWebGPU(silent = false) {
   if (!navigator.gpu) {
     if (!silent) setStatus("This browser does not support WebGPU. High Quality models require WebGPU.");
@@ -1202,7 +1277,6 @@ modelGet.addEventListener("click", async () => {
   const st = modelState[id];
   if (st.session) { activeModel = id; refreshModelCard(); return; }
   
-  // Phase 3: Run GPU check before download
   const gpuOk = await checkWebGPU();
   if (!gpuOk) return; 
 
