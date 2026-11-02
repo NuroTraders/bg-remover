@@ -20,13 +20,13 @@
         <path d="M14 52c0-10 8-16 18-16s18 6 18 16z" fill="#fff"/>
       </svg>
       <div>
-        <strong>BG Remover <span style="font-size: 11px; font-weight: normal; color: var(--muted); vertical-align: middle;">v1.4.0</span></strong>
+        <strong>BG Remover <span style="font-size: 11px; font-weight: normal; color: var(--muted); vertical-align: middle;">v1.5.0</span></strong>
         <small>Free · works offline · your photos stay on this computer</small>
       </div>
     </div>
     
     <div class="top-actions">
-      <button id="theme-toggle" class="btn btn-secondary icon-btn" title="Toggle Theme">
+      <button id="theme-toggle" class="btn btn-secondary icon-btn" title="Toggle Light/Dark Theme">
         <span id="theme-icon">🌙</span>
       </button>
       
@@ -41,7 +41,7 @@
       </div>
 
       <button id="install" class="btn btn-secondary" hidden>Install app</button>
-      <button id="add-btn" class="btn">Add images</button>
+      <button id="add-btn" class="btn" title="Add images (or drag & drop)">Add images</button>
       <input id="file" type="file" accept="image/*" multiple hidden />
     </div>
   </header>
@@ -75,10 +75,10 @@
           <canvas id="brush-layer"></canvas>
           
           <div id="brush-toolbar" class="brush-toolbar" hidden>
-            <button id="brush-restore" class="btn btn-small" title="Restore Subject">Restore</button>
-            <button id="brush-erase" class="btn btn-small" title="Erase Background">Erase</button>
-            <button id="brush-undo" class="btn btn-secondary btn-small" title="Undo Last Stroke">↩ Undo</button>
-            <input id="brush-size" type="range" min="5" max="100" value="30" title="Brush Size" />
+            <button id="brush-restore" class="btn btn-small" title="Paint the subject back">Restore</button>
+            <button id="brush-erase" class="btn btn-small" title="Erase the background">Erase</button>
+            <button id="brush-undo" class="btn btn-secondary btn-small" title="Undo last stroke (Ctrl+Z)">↩ Undo</button>
+            <input id="brush-size" type="range" min="5" max="100" value="30" title="Adjust brush size" />
             <button id="brush-off" class="btn btn-secondary btn-small">Done</button>
           </div>
         </div>
@@ -89,7 +89,7 @@
     <aside id="panel" class="panel disabled">
       <section id="model-card" class="card">
         <h3>AI model</h3>
-        <select id="model-select" aria-label="AI model">
+        <select id="model-select" aria-label="AI model" title="Choose the AI engine">
           <option value="fast">Fast (built in, works offline)</option>
           <option value="hq">High quality (download 100 MB)</option>
           <option value="hq32">High quality, most compatible (192 MB)</option>
@@ -118,7 +118,7 @@
           <input id="bg-custom" class="custom-color" type="color" value="#ff8800" title="Pick any color" aria-label="Custom color" />
         </div>
         <div class="bg-image-row">
-          <button id="bg-image-btn" class="btn btn-secondary btn-small" type="button">Use a picture as background…</button>
+          <button id="bg-image-btn" class="btn btn-secondary btn-small" type="button" title="Upload a custom background image">Use a picture as background…</button>
           <input id="bg-image" type="file" accept="image/*" hidden />
         </div>
       </section>
@@ -127,18 +127,18 @@
         <h3>Fine-tune the cut-out</h3>
         <div class="tune-group">
           <div class="tune-labels"><span>Keep more</span><span>Remove more</span></div>
-          <input id="keep" type="range" min="-50" max="50" value="0" />
+          <input id="keep" type="range" min="-50" max="50" value="0" title="Keep more subject / Remove background clutter" />
         </div>
         <div class="tune-group">
           <div class="tune-labels"><span>Soft edge</span><span>Sharp edge</span></div>
-          <input id="sharp" type="range" min="0" max="100" value="0" />
+          <input id="sharp" type="range" min="0" max="100" value="0" title="Soften the edges (hair) or make them sharp (objects)" />
         </div>
         <div class="button-row">
           <button id="tune-reset" class="btn btn-secondary btn-small" type="button">Reset</button>
-          <button id="tune-all" class="btn btn-secondary btn-small" type="button">Apply to all images</button>
+          <button id="tune-all" class="btn btn-secondary btn-small" type="button" title="Apply these exact slider settings to every image in the queue">Apply to all images</button>
         </div>
         <div class="button-row" style="margin-top: 15px; border-top: 1px solid var(--line); padding-top: 15px;">
-          <button id="toggle-brush" class="btn btn-block" type="button">✏️ Open Touch-up Brush</button>
+          <button id="toggle-brush" class="btn btn-block" type="button" title="Manually fix mistakes left by the AI">✏️ Open Touch-up Brush</button>
         </div>
       </section>
 
@@ -146,7 +146,7 @@
         <h3>Save</h3>
         <div class="row">
           <label for="format">Format</label>
-          <select id="format">
+          <select id="format" title="PNG is best for transparency. JPG is smallest.">
             <option value="png">PNG (best quality, big file)</option>
             <option value="webp">WebP (small, keeps transparency)</option>
             <option value="jpg">JPG (smallest, no transparency)</option>
@@ -155,11 +155,11 @@
         <p id="jpg-note" class="muted small" hidden>JPG cannot be transparent, so white is used unless you pick a background.</p>
         <div id="quality-row" class="row" hidden>
           <label for="quality">Quality</label>
-          <div class="range-line"><input id="quality" type="range" min="40" max="100" value="90" /><output id="quality-out">90%</output></div>
+          <div class="range-line"><input id="quality" type="range" min="40" max="100" value="90" title="Adjust compression quality" /><output id="quality-out">90%</output></div>
         </div>
         <div class="row">
           <label for="max-side">Size</label>
-          <select id="max-side">
+          <select id="max-side" title="Shrink the output dimensions">
             <option value="0">Keep full size</option>
             <option value="3000">Up to 3000 px</option>
             <option value="2000">Up to 2000 px</option>
@@ -171,18 +171,18 @@
         </div>
         <div class="row">
           <label for="target-kb">Max file size</label>
-          <div class="range-line"><input id="target-kb" type="number" min="10" step="10" placeholder="no limit" /><span class="muted small">KB</span></div>
+          <div class="range-line"><input id="target-kb" type="number" min="10" step="10" placeholder="no limit" title="The app will lower quality or shrink the image to fit this limit" /><span class="muted small">KB</span></div>
         </div>
         
         <div class="row">
           <label for="name-pattern">File name</label>
-          <input id="name-pattern" type="text" placeholder="{name}-nobg" title="Use {name} for the original file name" />
+          <input id="name-pattern" type="text" placeholder="{name}-nobg" title="Use {name} to insert the original file name" />
         </div>
 
         <p id="estimate" class="estimate muted small"></p>
         
-        <button id="save" class="btn btn-ok btn-block" disabled>Save this image</button>
-        <button id="copy" class="btn btn-secondary btn-block" disabled>📋 Copy to Clipboard</button>
+        <button id="save" class="btn btn-ok btn-block" disabled title="Save the current image (Ctrl+S)">Save this image</button>
+        <button id="copy" class="btn btn-secondary btn-block" disabled title="Copy the result directly to your clipboard (Ctrl+C)">📋 Copy to Clipboard</button>
         <button id="share" class="btn btn-secondary btn-block" hidden>📱 Share</button>
         <button id="save-all" class="btn btn-secondary btn-block" hidden>Save all as ZIP</button>
       </section>
@@ -199,8 +199,8 @@
         <li><strong>Add Images:</strong> Click "Add images", drag & drop files, or press Ctrl+V to paste from your clipboard.</li>
         <li><strong>Choose AI:</strong> The "Fast" model is built-in and instant. For perfect edges on hair and complex items, download the "High quality" model (requires WebGPU).</li>
         <li><strong>Adjust:</strong> Use the fine-tune sliders if the AI missed a spot. You can also change the background color, blur it, or upload a new image.</li>
-        <li><strong>Brush:</strong> If the AI still missed something, use the Touch-up Brush to manually restore or erase parts.</li>
-        <li><strong>Save:</strong> Choose PNG for transparency, JPG for solid backgrounds, and click "Save". You can also copy it directly to your clipboard.</li>
+        <li><strong>Brush:</strong> If the AI still missed something, use the Touch-up Brush to manually restore or erase parts (Ctrl+Z to undo).</li>
+        <li><strong>Save:</strong> Choose PNG for transparency, JPG for solid backgrounds, and click "Save". You can also copy it directly to your clipboard (Ctrl+C).</li>
       </ol>
     </div>
   </dialog>
@@ -208,7 +208,7 @@
   <dialog id="dialog-about" class="modal">
     <div class="modal-head"><h2>About BG Remover</h2><button class="modal-close">×</button></div>
     <div class="modal-body">
-      <p><strong>Version 1.4.0</strong></p>
+      <p><strong>Version 1.5.0</strong></p>
       <p>A free, open-source background removal tool that runs 100% locally on your device.</p>
       <p><strong>Privacy First:</strong> Your photos are never uploaded to a server. The AI runs directly inside your browser or desktop app using ONNX Runtime and WebGPU.</p>
       <p><strong>Credits:</strong></p>
@@ -224,6 +224,13 @@
   <dialog id="dialog-changelog" class="modal">
     <div class="modal-head"><h2>Change Log</h2><button class="modal-close">×</button></div>
     <div class="modal-body">
+      <h3>v1.5.0 - Phase 6 (QoL & Desktop Polish)</h3>
+      <ul>
+        <li>Added <strong>Auto-Updater</strong> for the Windows EXE (automatically checks GitHub).</li>
+        <li>Added <strong>Keyboard Shortcuts</strong>: Ctrl+C to copy, Ctrl+Z to undo brush strokes.</li>
+        <li>Added <strong>Batch Progress counter</strong> ("Processing 3 of 10...").</li>
+        <li>Added <strong>Tooltips</strong> to all settings and buttons for easier learning.</li>
+      </ul>
       <h3>v1.4.0 - Phase 5 (Desktop & Automation)</h3>
       <ul>
         <li>Bundled the 100MB High-Quality model directly into the Windows EXE for instant offline use.</li>
@@ -250,10 +257,9 @@
       
       <h3 style="color: var(--accent);">Upcoming Features</h3>
       <ul>
-        <li><strong>Auto-Updater (EXE):</strong> Automatic background updates for the Windows app.</li>
-        <li><strong>Batch Progress Bar:</strong> Live count of "Processing 3 of 10...".</li>
+        <li><strong>Passport / ID Photo Mode:</strong> Auto-crop to standard sizes (2x2 inch).</li>
+        <li><strong>Alpha Matting:</strong> Better hair edge smoothing (Guided Filter).</li>
         <li><strong>ML Kit Android:</strong> Lightning-fast native Android processing.</li>
-        <li><strong>Alpha Matting:</strong> Better hair edge smoothing.</li>
       </ul>
     </div>
   </dialog>

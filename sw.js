@@ -1,3 +1,5 @@
+// Only caches named "bg-remover-v..." are cleaned up. The downloaded High quality models live in
+// "bg-remover-models" and must never be deleted here.
 const CACHE = "bg-remover-v4";
 
 const PRECACHE = [
@@ -28,7 +30,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("bg-remover-v") && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

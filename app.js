@@ -1,4 +1,4 @@
-// BG Remover - Phase 5 (Desktop & Automation)
+// BG Remover - Phase 6 (QoL & Desktop Polish)
 const MODEL_PATH = "models/u2netp.onnx";
 const SIZE = 320;
 const MAX_SIDE = 2560;
@@ -514,7 +514,8 @@ async function processQueue() {
     while ((item = items.find((i) => i.status === "waiting"))) {
       item.status = "working";
       renderQueue();
-      refreshStatus();
+      const doneCount = doneItems().length;
+      setStatus(`Processing ${doneCount + 1} of ${items.length}...`);
       await nextPaint();
       try {
         const t0 = performance.now();
@@ -1087,13 +1088,35 @@ window.addEventListener("paste", (e) => {
 
 window.addEventListener("keydown", (e) => {
   const t = e.target;
-  const typing = t && (t.tagName === "SELECT" || (t.tagName === "INPUT" && t.type !== "range" && t.type !== "color"));
+  const typing = t && (t.tagName === "SELECT" || t.tagName === "TEXTAREA" || (t.tagName === "INPUT" && t.type !== "range" && t.type !== "color"));
+  
+  if (typing) return; // Ignore shortcuts while typing in inputs
+
+  // Save (Ctrl+S)
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
     e.preventDefault();
     if (!saveBtn.disabled) saveBtn.click();
     return;
   }
-  if (typing || (t && t.tagName === "INPUT" && t.type === "range")) return;
+
+  // Copy (Ctrl+C)
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+    if (!copyBtn.disabled && window.getSelection().toString() === "") {
+      e.preventDefault();
+      copyBtn.click();
+    }
+    return;
+  }
+
+  // Undo Brush (Ctrl+Z)
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+    if (brushMode && !brushUndoBtn.disabled) {
+      e.preventDefault();
+      brushUndoBtn.click();
+    }
+    return;
+  }
+
   const list = doneItems();
   const at = list.findIndex((i) => i.id === currentId);
   if ((e.key === "ArrowRight" || e.key === "ArrowDown") && at >= 0 && list.length > 1) {
@@ -1134,6 +1157,7 @@ function loadOrtGpu() {
     const previous = window.ort;
     const tag = document.createElement("script");
     tag.src = ORT_GPU_BASE + "ort.webgpu.min.js";
+    tag.crossOrigin = "anonymous"; // needed because the page sends Cross-Origin-Embedder-Policy: require-corp
     tag.onload = () => {
       const lib = window.ort;
       window.ort = previous;
