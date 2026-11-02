@@ -20,7 +20,7 @@
         <path d="M14 52c0-10 8-16 18-16s18 6 18 16z" fill="#fff"/>
       </svg>
       <div>
-        <strong>BG Remover <span style="font-size: 11px; font-weight: normal; color: var(--muted); vertical-align: middle;">v1.5.0</span></strong>
+        <strong>BG Remover <span style="font-size: 11px; font-weight: normal; color: var(--muted); vertical-align: middle;">v1.5.1</span></strong>
         <small>Free · works offline · your photos stay on this computer</small>
       </div>
     </div>
@@ -208,7 +208,7 @@
   <dialog id="dialog-about" class="modal">
     <div class="modal-head"><h2>About BG Remover</h2><button class="modal-close">×</button></div>
     <div class="modal-body">
-      <p><strong>Version 1.5.0</strong></p>
+      <p><strong>Version 1.5.1</strong></p>
       <p>A free, open-source background removal tool that runs 100% locally on your device.</p>
       <p><strong>Privacy First:</strong> Your photos are never uploaded to a server. The AI runs directly inside your browser or desktop app using ONNX Runtime and WebGPU.</p>
       <p><strong>Credits:</strong></p>
@@ -224,6 +224,11 @@
   <dialog id="dialog-changelog" class="modal">
     <div class="modal-head"><h2>Change Log</h2><button class="modal-close">×</button></div>
     <div class="modal-body">
+      <h3>v1.5.1 - Desktop Fix</h3>
+      <ul>
+        <li><strong>Fixed:</strong> Windows EXE crashed on startup with "Cannot find module 'electron-updater'". The updater is now bundled with the app.</li>
+        <li>The app now opens normally even if the updater component is missing.</li>
+      </ul>
       <h3>v1.5.0 - Phase 6 (QoL & Desktop Polish)</h3>
       <ul>
         <li>Added <strong>Auto-Updater</strong> for the Windows EXE (automatically checks GitHub).</li>
