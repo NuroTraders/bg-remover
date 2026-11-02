@@ -1,28 +1,21 @@
-# HANDOVER: BG Remover (PWA + APK + EXE)
+<!-- ... [Keep sections 1 through 7 exactly the same] ... -->
 
-One file for the whole project. New entries are added to the Task log at the bottom after each task.
+## 8. Task log
+<!-- ... [Keep the old tasks] ... -->
+- **Task 10 (done, tested):** **AI model card inside the app**. Choices: Fast (built in), High quality (BiRefNet lite 512 fp16, about 100 MB), High quality compatible (fp32, about 192 MB). Download with progress, kept in Cache Storage. `Redo all images with ...` button re-runs every image. If High quality fails, it falls back to Fast. Masks stored with size. Models are successfully loading and generating high-quality results via WebGPU. 
+- **Task 11 (Phase 1 Complete): Commercial Polish & UI** 
+    - **Menu & Modals:** Added a hamburger menu in the top bar containing Modals for Help/Tutorial, About, Change Log, and Contact.
+    - **Theme Toggle:** Added a manual Light/Dark theme toggle button next to the menu. Saves preference to `localStorage`.
+    - **Cleanup:** Instructed user to delete `android/`, `dist/`, and `node_modules/` from the repo to prepare for GitHub Actions. Confirmed `.gitignore` ignores `models` and `ort`.
+    - Files: `www/index.html`, `www/style.css`, `www/app.js`.
+- **Task 12 (Phase 2 Complete): Core UX Wins**
+    - **Background Blur:** Added a "Blur" swatch to the background options. It creates a blurred version of the original image using a canvas filter and caches it as a data URL for preview and export.
+    - **Touch-up Brush:** Added a floating brush toolbar over the viewer. Users can toggle "Restore" (paint subject back) or "Erase" (remove background). Includes a brush size slider and an Undo button.
+    - **Brush Architecture:** Strokes are recorded as arrays of points in `item.brushStrokes`. During `composeCutout`, these strokes are drawn onto a temporary mask canvas (using `destination-out` for erase and `source-over` for restore) before the `destination-in` composite is applied to the final image.
+    - Files: `www/index.html`, `www/style.css`, `www/app.js`.
 
-## 1. Goal
-Free, offline image background remover, **PC first**. Delivered as:
-1. **PWA** (primary): hosted free on Cloudflare (and GitHub Pages as a backup), installable, works offline
-2. **EXE**: Windows app (Electron): installer and portable
-3. **APK**: Android app (Capacitor). **ON HOLD** by the user's decision (Task 6/7 results: about 12 s per photo on the phone). The `android/` folder and `capacitor.config.json` stay in the repo untouched. The phone Save / Share code (Capacitor Filesystem + Share) was removed from `app.js` in Task 8 and is still in the Git history (Task 7 version).
-
-Everything must be free. One web codebase (`www/`) serves all three.
-
-## 2. Decisions
-| Topic | Decision |
-|---|---|
-| Core | HTML + CSS + JavaScript, no framework |
-| AI | onnxruntime-web (wasm, single thread) + U2Netp model (Apache 2.0, about 4.5 MB) |
-| Avoid | RMBG-1.4 (non-commercial license) |
-| Hosting | Cloudflare (main, much faster in Bangladesh, free) and GitHub Pages (backup) |
-| Quality strategy | A server ("online mode") is NOT needed: no free always-on GPU server exists, and the quality comes from the model, not from being online. Plan: optional **High quality mode** = one-time download of a better model (BiRefNet lite, MIT license) that runs locally on the PC's graphics card with WebGPU, falling back to the fast model |
-| Windows | Electron (planned) |
-| Android | Capacitor (planned) |
-| Work rules | Claude writes all code. Only changed or new files are delivered, with their folder. One HANDOVER.md only |
-
-## 3. Environment (user's PC)
-Windows, Node.js v24.22.0, npm 11.19.1, Git 2.56.0, VS Code. onnxruntime-web v1.31.1.
-
-## 4. Project structure
+## 9. Next Steps
+1. **AI & Performance:** Implement COOP/COEP headers in `wrangler.jsonc` and `electron/server.js` to enable multi-threading for the Fast model.
+2. **Export:** Add "Copy to Clipboard" button and custom batch naming.
+3. **Desktop (EXE):** Bundle the Fast and 100MB HQ models directly into the EXE using `extraResources` in `electron-builder.yml` (exclude the 192MB model to save space).
+4. **GitHub Actions:** Write `.github/workflows/build.yml` to automate building the Windows `.exe` and deploying the PWA.
