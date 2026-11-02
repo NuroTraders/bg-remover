@@ -12,7 +12,6 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- ... [Top bar remains exactly the same] ... -->
   <header class="topbar">
     <div class="brand">
       <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
@@ -30,6 +29,7 @@
       <button id="theme-toggle" class="btn btn-secondary icon-btn" title="Toggle Theme">
         <span id="theme-icon">🌙</span>
       </button>
+      
       <div class="menu-container">
         <button id="menu-btn" class="btn btn-secondary icon-btn" title="Menu">☰</button>
         <div id="menu-dropdown" class="menu-dropdown" hidden>
@@ -39,6 +39,7 @@
           <button data-dialog="dialog-contact">Contact</button>
         </div>
       </div>
+
       <button id="install" class="btn btn-secondary" hidden>Install app</button>
       <button id="add-btn" class="btn">Add images</button>
       <input id="file" type="file" accept="image/*" multiple hidden />
@@ -47,7 +48,6 @@
 
   <main class="app">
     <aside class="queue" aria-label="Images">
-      <!-- ... [Queue remains exactly the same] ... -->
       <div class="queue-head">
         <strong id="queue-title">Images</strong>
         <button id="clear-all" class="link-btn" hidden>Clear all</button>
@@ -63,6 +63,7 @@
         <h2 id="dz-title">Drop images here</h2>
         <p id="dz-sub">or click to choose. You can pick many at once. Ctrl+V pastes from the clipboard.</p>
       </div>
+      
       <div id="workspace" hidden>
         <div id="viewer" class="viewer">
           <canvas id="result" class="checker"></canvas>
@@ -71,8 +72,10 @@
           <span class="tag tag-left">Original</span>
           <span class="tag tag-right">Result</span>
           
-          <!-- NEW: Brush Overlay & Toolbar -->
+          <!-- Brush Overlay -->
           <canvas id="brush-layer"></canvas>
+          
+          <!-- Floating Brush Toolbar -->
           <div id="brush-toolbar" class="brush-toolbar" hidden>
             <button id="brush-restore" class="btn btn-small" title="Restore Subject">Restore</button>
             <button id="brush-erase" class="btn btn-small" title="Erase Background">Erase</button>
@@ -87,7 +90,6 @@
 
     <aside id="panel" class="panel disabled">
       <section id="model-card" class="card">
-        <!-- ... [AI Model card remains exactly the same] ... -->
         <h3>AI model</h3>
         <select id="model-select" aria-label="AI model">
           <option value="fast">Fast (built in, works offline)</option>
@@ -115,7 +117,6 @@
           <button class="swatch" data-color="#16a34a" style="background:#16a34a" title="Green" aria-label="Green"></button>
           <button class="swatch" data-color="#facc15" style="background:#facc15" title="Yellow" aria-label="Yellow"></button>
           
-          <!-- NEW: Blur Swatch -->
           <button class="swatch swatch-blur" data-color="blur" title="Blur original background" aria-label="Blur background">Blur</button>
           
           <input id="bg-custom" class="custom-color" type="color" value="#ff8800" title="Pick any color" aria-label="Custom color" />
@@ -140,7 +141,7 @@
           <button id="tune-reset" class="btn btn-secondary btn-small" type="button">Reset</button>
           <button id="tune-all" class="btn btn-secondary btn-small" type="button">Apply to all images</button>
         </div>
-        <!-- NEW: Brush Toggle -->
+        
         <div class="button-row" style="margin-top: 15px; border-top: 1px solid var(--line); padding-top: 15px;">
           <button id="toggle-brush" class="btn btn-block" type="button">✏️ Open Touch-up Brush</button>
         </div>
@@ -148,7 +149,6 @@
 
       <section class="card">
         <h3>Save</h3>
-        <!-- ... [Save section remains exactly the same] ... -->
         <div class="row">
           <label for="format">Format</label>
           <select id="format">
@@ -187,7 +187,7 @@
 
   <div id="drop-overlay" hidden>Drop images to add them</div>
 
-  <!-- ... [Dialogs remain exactly the same] ... -->
+  <!-- Modals -->
   <dialog id="dialog-help" class="modal">
     <div class="modal-head"><h2>How to use BG Remover</h2><button class="modal-close">×</button></div>
     <div class="modal-body">
@@ -200,7 +200,7 @@
       </ol>
     </div>
   </dialog>
-  
+
   <dialog id="dialog-about" class="modal">
     <div class="modal-head"><h2>About BG Remover</h2><button class="modal-close">×</button></div>
     <div class="modal-body">

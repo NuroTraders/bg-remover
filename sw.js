@@ -1,6 +1,4 @@
-// Service worker: lets the app work offline.
-// Change CACHE to "bg-remover-v2" (and so on) if you ever replace the model or runtime files.
-const CACHE = "bg-remover-v2"; // <--- CHANGED THIS LINE
+const CACHE = "bg-remover-v4";
 
 const PRECACHE = [
   "./",
@@ -39,7 +37,6 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET" || !req.url.startsWith(self.location.origin)) return;
 
-  // big files that rarely change: use the saved copy first
   const heavy = /\/(ort|models|icons)\//.test(new URL(req.url).pathname);
   event.respondWith(heavy ? cacheFirst(req) : networkFirst(req));
 });
@@ -52,7 +49,6 @@ async function cacheFirst(req) {
   return res;
 }
 
-// pages and code: try the network first so updates show up, fall back to the saved copy offline
 async function networkFirst(req) {
   try {
     const res = await fetch(req);
