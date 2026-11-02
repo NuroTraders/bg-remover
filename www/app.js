@@ -1,15 +1,11 @@
-// BG Remover - Task 10 (PC edition)
-// Many images -> AI makes a mask for each -> fine-tune, background, export (PNG / WebP / JPG, size limit, ZIP)
-// Two AI models: Fast (built in) and High quality (BiRefNet lite, downloaded once, runs on the graphics card)
-
+// BG Remover - Final Phase 2 (Brush & Blur)
 const MODEL_PATH = "models/u2netp.onnx";
-const SIZE = 320;        // U2Netp works on 320x320 images
-const MAX_SIDE = 2560;   // big photos are shrunk to this (longest side) before processing
+const SIZE = 320;
+const MAX_SIDE = 2560;
 const SETTINGS_KEY = "bgRemoverSettings.v1";
 
-// ---------- the AI models you can choose ----------
 const HF = "https://huggingface.co/shozebDev/birefnet-lite-512-onnx/resolve/main/onnx/";
-const ORT_GPU_BASE = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/"; // graphics-card runtime
+const ORT_GPU_BASE = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/";
 const MODEL_CACHE = "bg-remover-models";
 const MODELS = {
   fast: {
@@ -30,7 +26,7 @@ const modelState = {
   hq32: { cached: false, session: null, busy: false, phase: "", progress: -1, error: "" },
 };
 let activeModel = "fast";
-let ortGpu = null;       // the graphics-card runtime, loaded only when needed
+let ortGpu = null;
 let ortGpuPromise = null;
 
 const $ = (id) => document.getElementById(id);
@@ -77,17 +73,29 @@ const modelGet = $("model-get");
 const modelRemove = $("model-remove");
 const modelRedo = $("model-redo");
 
-// ---------- state ----------
+// Phase 1 & 2 DOM
+const themeToggle = $("theme-toggle");
+const themeIcon = $("theme-icon");
+const menuBtn = $("menu-btn");
+const menuDropdown = $("menu-dropdown");
+const brushLayer = $("brush-layer");
+const brushToolbar = $("brush-toolbar");
+const toggleBrushBtn = $("toggle-brush");
+const brushRestoreBtn = $("brush-restore");
+const brushEraseBtn = $("brush-erase");
+const brushUndoBtn = $("brush-undo");
+const brushSize = $("brush-size");
+const brushOffBtn = $("brush-off");
+
 let session = null;
 let nextId = 1;
-const items = [];                 // every image: { id, file, name, status, mask, keep, sharp, thumb, error }
+const items = [];
 let currentId = null;
-let view = { id: null, source: null }; // the (shrunk) photo of the selected image
+let view = { id: null, source: null, blurUrl: null };
 let selectToken = 0;
-const bg = { type: "transparent", color: "#ffffff", image: null, imageUrl: "" };
+const bg = { type: "transparent", color: "#ffffff", image: null, imageUrl: "", blurUrl: null };
 const exp = { format: "png", quality: 90, maxSide: 0, targetKB: 0 };
 
-// ---------- small helpers ----------
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 const secs = (ms) => (ms / 1000).toFixed(1);
 function fmtSize(bytes) {
@@ -104,7 +112,7 @@ function loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null");
     if (!saved) return;
-    if (saved.bg && (saved.bg.type === "color" || saved.bg.type === "transparent")) {
+    if (saved.bg && (saved.bg.type === "color" || saved.bg.type === "transparent" || saved.bg.type === "blur")) {
       bg.type = saved.bg.type;
       if (/^#[0-9a-f]{6}$/i.test(saved.bg.color || "")) bg.color = saved.bg.color;
     }
@@ -114,7 +122,7 @@ function loadSettings() {
       if (saved.exp.maxSide >= 0) exp.maxSide = Number(saved.exp.maxSide);
       if (saved.exp.targetKB >= 0) exp.targetKB = Number(saved.exp.targetKB);
     }
-  } catch (e) { /* storage can be empty or blocked: ignore */ }
+  } catch (e) { /* ignore */ }
 }
 function saveSettings() {
   try {
@@ -125,21 +133,19 @@ function saveSettings() {
   } catch (e) { /* ignore */ }
 }
 
-// ---------- 1. load the AI model once ----------
 async function loadModel() {
   try {
     ort.env.wasm.wasmPaths = new URL("ort/", document.baseURI).href;
-    ort.env.wasm.numThreads = 1; // single thread works everywhere, no special server headers
+    ort.env.wasm.numThreads = 1;
     session = await ort.InferenceSession.create(MODEL_PATH, { executionProviders: ["wasm"] });
     refreshStatus();
-    processQueue(); // in case images were added while the model was loading
+    processQueue();
   } catch (err) {
     console.error(err);
     setStatus("Could not load the model. Did you run 'npm run setup'? (" + err.message + ")");
   }
 }
 
-// ---------- 2. read a file into a canvas (shrunk if it is very large) ----------
 async function fileToCanvas(file, maxSide) {
   const url = URL.createObjectURL(file);
   try {
@@ -157,11 +163,9 @@ async function fileToCanvas(file, maxSide) {
   }
 }
 
-// ---------- 3. AI: picture -> mask (0 = background, 1 = subject) ----------
 const MEAN = [0.485, 0.456, 0.406];
 const STD = [0.229, 0.224, 0.225];
 
-// shrinks the picture to size x size and turns it into the numbers the AI expects
 function pixelsToInput(source, size, smooth) {
   const c = document.createElement("canvas");
   c.width = size;
@@ -180,7 +184,6 @@ function pixelsToInput(source, size, smooth) {
   return input;
 }
 
-// Fast model (U2Netp, built in)
 async function getMaskFast(source) {
   const tensor = new ort.Tensor("float32", pixelsToInput(source, SIZE, false), [1, 3, SIZE, SIZE]);
   const output = await session.run({ [session.inputNames[0]]: tensor });
@@ -195,7 +198,6 @@ async function getMaskFast(source) {
   return mask;
 }
 
-// High quality model (BiRefNet lite on the graphics card). It returns logits, a sigmoid turns them into 0..1.
 async function getMaskHq(def, source) {
   const st = modelState[def.id];
   const tensor = new ortGpu.Tensor("float32", pixelsToInput(source, def.size, true), [1, 3, def.size, def.size]);
@@ -206,7 +208,6 @@ async function getMaskHq(def, source) {
   return mask;
 }
 
-// uses the model you picked; if High quality fails it switches back to Fast and carries on
 async function getMaskActive(source) {
   if (activeModel !== "fast") {
     const def = MODELS[activeModel];
@@ -224,24 +225,21 @@ async function getMaskActive(source) {
   return { mask: await getMaskFast(source), size: SIZE, model: "fast" };
 }
 
-// ---------- 4. mask + photo -> transparent cut-out ----------
-// The small mask is stretched over the photo by the browser (fast), instead of looping over every pixel.
-const surfaces = {}; // one small canvas per mask size (320 for Fast, 512 for High quality)
+const surfaces = {};
 function maskSurface(n) {
   if (!surfaces[n]) {
     const canvas = document.createElement("canvas");
     canvas.width = n;
     canvas.height = n;
     const ctx = canvas.getContext("2d");
-    surfaces[n] = { canvas, ctx, image: ctx.createImageData(n, n) }; // colors stay 0 (black), only transparency is set
+    surfaces[n] = { canvas, ctx, image: ctx.createImageData(n, n) };
   }
   return surfaces[n];
 }
 
-// "Keep more" lowers the cut-off, "Sharp edge" makes the step steeper. Defaults give the plain mask.
-function composeCutout(source, mask, maskSize, keep, sharp, target) {
-  const center = 0.5 + keep / 200;         // 0.25 .. 0.75
-  const width = 0.5 - (sharp / 100) * 0.4; // 0.5 .. 0.1
+function composeCutout(source, mask, maskSize, keep, sharp, target, strokes = []) {
+  const center = 0.5 + keep / 200;
+  const width = 0.5 - (sharp / 100) * 0.4;
   const lo = center - width;
   const span = 2 * width;
   const surf = maskSurface(maskSize);
@@ -253,6 +251,37 @@ function composeCutout(source, mask, maskSize, keep, sharp, target) {
   }
   surf.ctx.putImageData(surf.image, 0, 0);
 
+  let finalMask = surf.canvas;
+  if (strokes.length > 0) {
+    const temp = document.createElement('canvas');
+    temp.width = maskSize;
+    temp.height = maskSize;
+    const tctx = temp.getContext('2d');
+    tctx.drawImage(surf.canvas, 0, 0);
+    const scale = maskSize / source.width;
+    
+    for (const stroke of strokes) {
+      tctx.beginPath();
+      tctx.lineWidth = stroke.size * scale;
+      tctx.lineCap = 'round';
+      tctx.lineJoin = 'round';
+      if (stroke.mode === 'restore') {
+        tctx.strokeStyle = '#fff';
+        tctx.globalCompositeOperation = 'source-over';
+      } else {
+        tctx.strokeStyle = '#000';
+        tctx.globalCompositeOperation = 'destination-out';
+      }
+      for (let i = 0; i < stroke.points.length; i++) {
+        const p = stroke.points[i];
+        if (i === 0) tctx.moveTo(p.x * scale, p.y * scale);
+        else tctx.lineTo(p.x * scale, p.y * scale);
+      }
+      tctx.stroke();
+    }
+    finalMask = temp;
+  }
+
   const w = source.width;
   const h = source.height;
   if (target.width !== w || target.height !== h) {
@@ -263,18 +292,19 @@ function composeCutout(source, mask, maskSize, keep, sharp, target) {
   ctx.globalCompositeOperation = "source-over";
   ctx.clearRect(0, 0, w, h);
   ctx.drawImage(source, 0, 0);
-  ctx.globalCompositeOperation = "destination-in"; // keep the photo only where the mask is solid
+  ctx.globalCompositeOperation = "destination-in";
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(surf.canvas, 0, 0, w, h);
+  ctx.drawImage(finalMask, 0, 0, w, h);
   ctx.globalCompositeOperation = "source-over";
 }
 
 function renderResult() {
   const item = currentItem();
   if (!item || !item.mask || !view.source || view.id !== item.id) return;
-  composeCutout(view.source, item.mask, item.maskSize, item.keep, item.sharp, resultCanvas);
+  composeCutout(view.source, item.mask, item.maskSize, item.keep, item.sharp, resultCanvas, item.brushStrokes);
 }
+
 let renderQueued = false;
 function scheduleRender() {
   if (renderQueued) return;
@@ -282,7 +312,6 @@ function scheduleRender() {
   requestAnimationFrame(() => { renderQueued = false; renderResult(); });
 }
 
-// ---------- 5. the list of images ----------
 function stateLabel(item) {
   if (item.status === "waiting") return "Waiting";
   if (item.status === "working") return "Working...";
@@ -378,7 +407,7 @@ function removeItem(id) {
   if (currentId === id) {
     const next = items.slice(index).concat(items.slice(0, index)).find((i) => i.status === "done");
     currentId = null;
-    view = { id: null, source: null };
+    view = { id: null, source: null, blurUrl: null };
     if (next) selectItem(next.id);
     else showWorkspace(false);
   }
@@ -390,7 +419,7 @@ function removeItem(id) {
 clearAllBtn.addEventListener("click", () => {
   items.length = 0;
   currentId = null;
-  view = { id: null, source: null };
+  view = { id: null, source: null, blurUrl: null };
   selectToken++;
   showWorkspace(false);
   renderQueue();
@@ -399,7 +428,6 @@ clearAllBtn.addEventListener("click", () => {
   estimateEl.textContent = "";
 });
 
-// ---------- 6. select an image and show it ----------
 async function selectItem(id, knownSource) {
   const item = items.find((i) => i.id === id);
   if (!item || item.status !== "done") return;
@@ -417,12 +445,16 @@ async function selectItem(id, knownSource) {
       catch (err) { setStatus("Could not open " + item.name); return; }
     }
   }
-  if (token !== selectToken) return; // another image was selected meanwhile
+  if (token !== selectToken) return;
 
-  view = { id, source };
+  view = { id, source, blurUrl: null };
   originalCanvas.width = source.width;
   originalCanvas.height = source.height;
   originalCanvas.getContext("2d").drawImage(source, 0, 0);
+  
+  brushLayer.width = source.width;
+  brushLayer.height = source.height;
+
   keepSlider.value = item.keep;
   sharpSlider.value = item.sharp;
   renderResult();
@@ -432,7 +464,6 @@ async function selectItem(id, knownSource) {
   refreshStatus();
 }
 
-// ---------- 7. compare line (drag over the picture) ----------
 function setSplit(pct) {
   pct = Math.max(0, Math.min(100, pct));
   originalCanvas.style.clipPath = "inset(0 " + (100 - pct) + "% 0 0)";
@@ -445,6 +476,7 @@ function splitFromEvent(e) {
   setSplit(((e.clientX - rect.left) / rect.width) * 100);
 }
 viewer.addEventListener("pointerdown", (e) => {
+  if (brushMode) return; // Don't drag slider when drawing
   dragging = true;
   try { viewer.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   splitFromEvent(e);
@@ -454,7 +486,6 @@ const stopDrag = () => { dragging = false; };
 viewer.addEventListener("pointerup", stopDrag);
 viewer.addEventListener("pointercancel", stopDrag);
 
-// ---------- 8. process the queue (one image after another) ----------
 let processing = false;
 async function processQueue() {
   if (processing) return;
@@ -471,7 +502,7 @@ async function processQueue() {
         const t0 = performance.now();
         const source = await fileToCanvas(item.file, MAX_SIDE);
         const res = await getMaskActive(source);
-        if (!items.includes(item)) continue; // it was removed while working
+        if (!items.includes(item)) continue;
         item.mask = res.mask;
         item.maskSize = res.size;
         item.modelId = res.model;
@@ -515,6 +546,7 @@ function addFiles(fileList) {
     items.push({
       id: nextId++, file, name: file.name || "pasted-image.png", status: "waiting",
       mask: null, maskSize: SIZE, modelId: "fast", ms: 0, keep: 0, sharp: 0, thumb: "", error: "",
+      brushStrokes: []
     });
   }
   renderQueue();
@@ -522,23 +554,39 @@ function addFiles(fileList) {
   processQueue();
 }
 
-// ---------- 9. background ----------
 function applyBackgroundPreview() {
   resultCanvas.style.backgroundImage = "";
   resultCanvas.style.backgroundColor = "";
   resultCanvas.style.backgroundSize = "";
   resultCanvas.style.backgroundPosition = "";
   resultCanvas.classList.toggle("checker", bg.type === "transparent");
+  
   if (bg.type === "color") resultCanvas.style.backgroundColor = bg.color;
   if (bg.type === "image") {
     resultCanvas.style.backgroundImage = 'url("' + bg.imageUrl + '")';
     resultCanvas.style.backgroundSize = "cover";
     resultCanvas.style.backgroundPosition = "center";
   }
+  if (bg.type === "blur" && view.source) {
+    if (!view.blurUrl) {
+      const temp = document.createElement('canvas');
+      temp.width = view.source.width;
+      temp.height = view.source.height;
+      const tctx = temp.getContext('2d');
+      tctx.filter = 'blur(24px)';
+      tctx.drawImage(view.source, 0, 0);
+      view.blurUrl = temp.toDataURL('image/jpeg', 0.8);
+    }
+    resultCanvas.style.backgroundImage = `url(${view.blurUrl})`;
+    resultCanvas.style.backgroundSize = "cover";
+    resultCanvas.style.backgroundPosition = "center";
+  }
+
   let matched = false;
   document.querySelectorAll(".swatch").forEach((b) => {
     const on =
       (bg.type === "transparent" && b.dataset.color === "transparent") ||
+      (bg.type === "blur" && b.dataset.color === "blur") ||
       (bg.type === "color" && b.dataset.color.toLowerCase() === bg.color.toLowerCase());
     b.classList.toggle("active", on);
     if (on) matched = true;
@@ -558,6 +606,7 @@ function chooseBackground(next) {
 document.querySelectorAll(".swatch").forEach((b) => {
   b.addEventListener("click", () => {
     if (b.dataset.color === "transparent") chooseBackground({ type: "transparent" });
+    else if (b.dataset.color === "blur") chooseBackground({ type: "blur" });
     else chooseBackground({ type: "color", color: b.dataset.color });
   });
 });
@@ -581,7 +630,6 @@ bgImageInput.addEventListener("change", async () => {
   }
 });
 
-// ---------- 10. fine-tune ----------
 keepSlider.addEventListener("input", () => {
   const item = currentItem();
   if (item) item.keep = Number(keepSlider.value);
@@ -609,7 +657,6 @@ tuneAll.addEventListener("click", () => {
   setStatus("Applied these settings to all " + items.length + " images.");
 });
 
-// ---------- 11. export: make the final picture ----------
 function drawCover(ctx, img, w, h) {
   const k = Math.max(w / img.naturalWidth, h / img.naturalHeight);
   const dw = img.naturalWidth * k;
@@ -617,7 +664,6 @@ function drawCover(ctx, img, w, h) {
   ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
 }
 
-// shrinks in steps of at most half, which keeps the picture sharp
 function resizeCanvas(canvas, newW, newH) {
   let cur = canvas;
   while (cur.width / 2 > newW && cur.height / 2 > newH) {
@@ -642,7 +688,7 @@ async function renderForExport(item) {
   if (!item.mask) throw new Error("This image is still being processed.");
   const source = view.id === item.id && view.source ? view.source : await fileToCanvas(item.file, MAX_SIDE);
   const cut = document.createElement("canvas");
-  composeCutout(source, item.mask, item.maskSize, item.keep, item.sharp, cut);
+  composeCutout(source, item.mask, item.maskSize, item.keep, item.sharp, cut, item.brushStrokes);
 
   let out = cut;
   if (bg.type !== "transparent" || exp.format === "jpg") {
@@ -650,7 +696,12 @@ async function renderForExport(item) {
     out.width = cut.width;
     out.height = cut.height;
     const ctx = out.getContext("2d");
-    if (bg.type === "image" && bg.image) {
+    
+    if (bg.type === "blur") {
+      ctx.filter = "blur(24px)";
+      ctx.drawImage(source, 0, 0, out.width, out.height);
+      ctx.filter = "none";
+    } else if (bg.type === "image" && bg.image) {
       drawCover(ctx, bg.image, out.width, out.height);
     } else {
       ctx.fillStyle = bg.type === "color" ? bg.color : "#ffffff";
@@ -674,7 +725,6 @@ function canvasToBlob(canvas, format, quality) {
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b), MIME[format], quality));
 }
 
-// Encodes the picture. With a size limit it lowers the quality first, then shrinks the picture if needed.
 async function encodeImage(canvas, format, quality, targetBytes) {
   const lossy = format !== "png";
   let c = canvas;
@@ -701,7 +751,7 @@ async function encodeImage(canvas, format, quality, targetBytes) {
       last = { blob, scale, quality: 100 };
       if (!targetBytes || blob.size <= targetBytes) return last;
     }
-    scale *= 0.85; // still too big: make the picture a little smaller and try again
+    scale *= 0.85;
     c = resizeCanvas(canvas, Math.round(canvas.width * scale), Math.round(canvas.height * scale));
   }
   return last;
@@ -717,7 +767,6 @@ async function exportItem(item) {
   return { blob: res.blob, res, name: baseName(item.name) + (plain ? "-nobg." : "-newbg.") + ext };
 }
 
-// ---------- 12. size estimate ----------
 let estTimer = null;
 let estToken = 0;
 function scheduleEstimate() {
@@ -745,7 +794,6 @@ async function runEstimate() {
   }
 }
 
-// ---------- 13. export settings controls ----------
 function syncExportControls() {
   formatSel.value = exp.format;
   qualityInput.value = exp.quality;
@@ -770,7 +818,6 @@ targetKb.addEventListener("input", () => {
   scheduleEstimate();
 });
 
-// WebP is not available in every browser: hide the option if it cannot be made
 (function checkWebp() {
   try {
     const c = document.createElement("canvas");
@@ -783,7 +830,6 @@ targetKb.addEventListener("input", () => {
   } catch (e) { /* ignore */ }
 })();
 
-// ---------- 14. save ----------
 function downloadBlob(blob, name) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -851,7 +897,6 @@ saveAllBtn.addEventListener("click", async () => {
   }
 });
 
-// A ZIP file without compression ("store"). PNG, WebP and JPG are already compressed.
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
@@ -882,8 +927,8 @@ function makeZip(files) {
     const local = new DataView(new ArrayBuffer(30));
     local.setUint32(0, 0x04034b50, true);
     local.setUint16(4, 20, true);
-    local.setUint16(6, 0x0800, true);   // names are UTF-8
-    local.setUint16(8, 0, true);        // no compression
+    local.setUint16(6, 0x0800, true);
+    local.setUint16(8, 0, true);
     local.setUint16(10, dosTime, true);
     local.setUint16(12, dosDate, true);
     local.setUint32(14, crc, true);
@@ -921,7 +966,6 @@ function makeZip(files) {
   return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: "application/zip" });
 }
 
-// ---------- 15. adding images: button, click, drag and drop, paste ----------
 addBtn.addEventListener("click", () => fileInput.click());
 dropzone.addEventListener("click", () => fileInput.click());
 dropzone.addEventListener("keydown", (e) => {
@@ -929,7 +973,7 @@ dropzone.addEventListener("keydown", (e) => {
 });
 fileInput.addEventListener("change", () => {
   addFiles(fileInput.files);
-  fileInput.value = ""; // lets you pick the same file again
+  fileInput.value = "";
 });
 
 let dragDepth = 0;
@@ -954,7 +998,6 @@ window.addEventListener("paste", (e) => {
   if (files.length) addFiles(files);
 });
 
-// ---------- 16. keyboard ----------
 window.addEventListener("keydown", (e) => {
   const t = e.target;
   const typing = t && (t.tagName === "SELECT" || (t.tagName === "INPUT" && t.type !== "range" && t.type !== "color"));
@@ -977,7 +1020,6 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
-// ---------- 17. installable app (PWA) ----------
 let installEvent = null;
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
@@ -993,8 +1035,6 @@ installBtn.addEventListener("click", async () => {
 });
 window.addEventListener("appinstalled", () => { installBtn.hidden = true; });
 
-// The service worker saves the app and the AI model so it works offline.
-// Only on http/https, and not inside the Windows app (it already has everything locally).
 const insideDesktopApp = navigator.userAgent.includes("Electron");
 if ("serviceWorker" in navigator && location.protocol.startsWith("http") && !insideDesktopApp) {
   window.addEventListener("load", () => {
@@ -1002,11 +1042,10 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http") && !ins
   });
 }
 
-// ---------- 18. choosing and downloading an AI model ----------
 function loadOrtGpu() {
   if (ortGpuPromise) return ortGpuPromise;
   ortGpuPromise = new Promise((resolve, reject) => {
-    const previous = window.ort; // keep the built-in runtime safe: this script also names itself "ort"
+    const previous = window.ort;
     const tag = document.createElement("script");
     tag.src = ORT_GPU_BASE + "ort.webgpu.min.js";
     tag.onload = () => {
@@ -1024,7 +1063,7 @@ function loadOrtGpu() {
 
 async function getModelBytes(def, st) {
   let cache = null;
-  try { cache = await caches.open(MODEL_CACHE); } catch (e) { /* no saved files in this browser */ }
+  try { cache = await caches.open(MODEL_CACHE); } catch (e) { /* no saved files */ }
   if (cache) {
     const hit = await cache.match(def.url);
     if (hit) { st.cached = true; return new Uint8Array(await hit.arrayBuffer()); }
@@ -1056,7 +1095,7 @@ async function getModelBytes(def, st) {
     try {
       await cache.put(def.url, new Response(bytes, { headers: { "content-type": "application/octet-stream" } }));
       st.cached = true;
-    } catch (e) { /* too big to keep: it will be downloaded again next time */ }
+    } catch (e) { /* too big */ }
   }
   return bytes;
 }
@@ -1155,11 +1194,133 @@ modelRedo.addEventListener("click", () => {
   try {
     const cache = await caches.open(MODEL_CACHE);
     for (const id of ["hq", "hq32"]) modelState[id].cached = !!(await cache.match(MODELS[id].url));
-  } catch (e) { /* no saved files in this browser */ }
+  } catch (e) { /* no saved files */ }
   refreshModelCard();
 })();
 
-// ---------- start ----------
+// Theme Toggle
+const savedTheme = localStorage.getItem("bgRemoverTheme");
+if (savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+  document.body.setAttribute("data-theme", "dark");
+  themeIcon.textContent = "☀️";
+} else {
+  document.body.setAttribute("data-theme", "light");
+  themeIcon.textContent = "🌙";
+}
+
+themeToggle.addEventListener("click", () => {
+  const current = document.body.getAttribute("data-theme");
+  const next = current === "dark" ? "light" : "dark";
+  document.body.setAttribute("data-theme", next);
+  localStorage.setItem("bgRemoverTheme", next);
+  themeIcon.textContent = next === "dark" ? "☀️" : "🌙";
+});
+
+// Menu Dropdown
+menuBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  menuDropdown.hidden = !menuDropdown.hidden;
+});
+document.addEventListener("click", (e) => {
+  if (!menuDropdown.hidden && !menuDropdown.contains(e.target)) {
+    menuDropdown.hidden = true;
+  }
+});
+
+// Modals
+document.querySelectorAll("[data-dialog]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const dialogId = btn.getAttribute("data-dialog");
+    const dialog = $(dialogId);
+    if (dialog) {
+      dialog.showModal();
+      menuDropdown.hidden = true;
+    }
+  });
+});
+
+document.querySelectorAll(".modal-close").forEach(btn => {
+  btn.addEventListener("click", () => {
+    btn.closest("dialog").close();
+  });
+});
+
+document.querySelectorAll("dialog").forEach(dialog => {
+  dialog.addEventListener("click", (e) => {
+    const rect = dialog.getBoundingClientRect();
+    const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+      rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+    if (!isInDialog) {
+      dialog.close();
+    }
+  });
+});
+
+// Touch-up Brush Logic
+let currentStroke = null;
+let brushMode = null;
+
+function setBrushMode(mode) {
+  brushMode = mode;
+  brushLayer.classList.toggle("active", mode !== null);
+  brushRestoreBtn.classList.toggle("active", mode === "restore");
+  brushEraseBtn.classList.toggle("active", mode === "erase");
+  toggleBrushBtn.classList.toggle("active", mode !== null);
+  
+  if (mode) {
+    brushToolbar.hidden = false;
+  } else {
+    brushToolbar.hidden = true;
+  }
+}
+
+toggleBrushBtn.addEventListener("click", () => {
+  setBrushMode(brushMode ? null : "restore");
+});
+brushOffBtn.addEventListener("click", () => setBrushMode(null));
+brushRestoreBtn.addEventListener("click", () => setBrushMode("restore"));
+brushEraseBtn.addEventListener("click", () => setBrushMode("erase"));
+
+brushUndoBtn.addEventListener("click", () => {
+  const item = currentItem();
+  if (item && item.brushStrokes.length > 0) {
+    item.brushStrokes.pop();
+    renderResult();
+    scheduleEstimate();
+  }
+});
+
+brushLayer.addEventListener('pointerdown', (e) => {
+  const item = currentItem();
+  if (!brushMode || !item) return;
+  
+  const rect = brushLayer.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (brushLayer.width / rect.width);
+  const y = (e.clientY - rect.top) * (brushLayer.height / rect.height);
+  
+  currentStroke = { mode: brushMode, size: Number(brushSize.value), points: [{x, y}] };
+  item.brushStrokes.push(currentStroke);
+  renderResult();
+});
+
+brushLayer.addEventListener('pointermove', (e) => {
+  if (!currentStroke) return;
+  const rect = brushLayer.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (brushLayer.width / rect.width);
+  const y = (e.clientY - rect.top) * (brushLayer.height / rect.height);
+  
+  currentStroke.points.push({x, y});
+  renderResult();
+});
+
+window.addEventListener('pointerup', () => {
+  if (currentStroke) {
+    currentStroke = null;
+    scheduleEstimate();
+  }
+});
+
+// Start
 loadSettings();
 syncExportControls();
 applyBackgroundPreview();
