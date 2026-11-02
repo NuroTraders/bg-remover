@@ -1,4 +1,4 @@
-// BG Remover - Final Phase 2 (Brush & Blur)
+// BG Remover - Phase 3 (Performance & AI Check)
 const MODEL_PATH = "models/u2netp.onnx";
 const SIZE = 320;
 const MAX_SIDE = 2560;
@@ -136,7 +136,16 @@ function saveSettings() {
 async function loadModel() {
   try {
     ort.env.wasm.wasmPaths = new URL("ort/", document.baseURI).href;
-    ort.env.wasm.numThreads = 1;
+    
+    // Phase 3: Multi-threading check
+    if (self.crossOriginIsolated) {
+      ort.env.wasm.numThreads = Math.min(4, navigator.hardwareConcurrency || 2);
+      console.log(`Multi-threading enabled with ${ort.env.wasm.numThreads} threads.`);
+    } else {
+      ort.env.wasm.numThreads = 1;
+      console.log("Multi-threading not available. Using 1 thread.");
+    }
+
     session = await ort.InferenceSession.create(MODEL_PATH, { executionProviders: ["wasm"] });
     refreshStatus();
     processQueue();
@@ -476,7 +485,7 @@ function splitFromEvent(e) {
   setSplit(((e.clientX - rect.left) / rect.width) * 100);
 }
 viewer.addEventListener("pointerdown", (e) => {
-  if (brushMode) return; // Don't drag slider when drawing
+  if (brushMode) return;
   dragging = true;
   try { viewer.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   splitFromEvent(e);
@@ -1100,6 +1109,29 @@ async function getModelBytes(def, st) {
   return bytes;
 }
 
+// Phase 3: GPU Check
+async function checkWebGPU(silent = false) {
+  if (!navigator.gpu) {
+    if (!silent) setStatus("This browser does not support WebGPU. High Quality models require WebGPU.");
+    return false;
+  }
+  try {
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) {
+      if (!silent) setStatus("No graphics adapter found. High Quality models require a GPU.");
+      return false;
+    }
+    if (!adapter.features.has("shader-f16") && modelSelect.value === "hq") {
+      if (!silent) setStatus("Your GPU does not support 16-bit floats. Please use the 'High quality compatible' (192 MB) model instead.");
+      return false;
+    }
+    return true;
+  } catch (e) {
+    if (!silent) setStatus("WebGPU check failed: " + e.message);
+    return false;
+  }
+}
+
 async function startHq(def) {
   const st = modelState[def.id];
   st.busy = true;
@@ -1108,7 +1140,6 @@ async function startHq(def) {
   st.phase = "Preparing...";
   refreshModelCard();
   try {
-    if (!navigator.gpu) throw new Error("This browser has no WebGPU. Use the latest Chrome or Edge on a PC with a graphics card.");
     st.phase = "Loading the graphics runtime...";
     refreshModelCard();
     const lib = await loadOrtGpu();
@@ -1170,6 +1201,11 @@ modelGet.addEventListener("click", async () => {
   if (id === "fast") { activeModel = "fast"; refreshModelCard(); return; }
   const st = modelState[id];
   if (st.session) { activeModel = id; refreshModelCard(); return; }
+  
+  // Phase 3: Run GPU check before download
+  const gpuOk = await checkWebGPU();
+  if (!gpuOk) return; 
+
   await startHq(MODELS[id]);
 });
 modelRemove.addEventListener("click", async () => {
