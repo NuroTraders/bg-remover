@@ -32,6 +32,7 @@ jobs:
         run: npm run setup
 
       - name: Download HQ Model for Bundling (100MB)
+        shell: bash
         run: |
           mkdir -p www/models
           curl -L "https://huggingface.co/shozebDev/birefnet-lite-512-onnx/resolve/main/onnx/model_fp16.onnx" -o www/models/model_fp16.onnx
@@ -51,7 +52,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./www
-          cname: bg.nurotraders.com # Optional: Remove or change this if you don't have a custom domain
+          # cname: bg.nurotraders.com # Optional: Remove or change this if you don't have a custom domain
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
