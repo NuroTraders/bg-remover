@@ -6,6 +6,7 @@
 //   "BG Remover.exe" --smoke-test    used by the build: starts the server, checks the files, then quits
 
 const { app, BrowserWindow, Menu, shell, dialog } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
@@ -114,7 +115,18 @@ async function createWindow() {
   await mainWindow.loadURL(origin + "/index.html");
 
   if (process.argv.includes("--dev")) mainWindow.webContents.openDevTools();
+
+  // Check for updates silently in the background
+  if (app.isPackaged && !SMOKE) {
+    autoUpdater.checkForUpdatesAndNotify().catch(err => {
+      console.warn("Update check failed:", err);
+    });
+  }
 }
+
+autoUpdater.on("error", (err) => {
+  console.warn("Update error:", err);
+});
 
 app.setAppUserModelId("com.nurotraders.bgremover");
 

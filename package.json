@@ -1,6 +1,6 @@
 {
   "name": "bg-remover",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "description": "Free offline background remover (website, installable app and Windows app)",
   "author": "NuroTraders",
@@ -12,6 +12,7 @@
     "dist": "npm run setup && electron-builder --win"
   },
   "dependencies": {
+    "electron-updater": "^6.1.7",
     "onnxruntime-web": "^1.23.0"
   },
   "devDependencies": {

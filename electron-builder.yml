@@ -19,6 +19,13 @@ extraResources:
   - from: www
     to: www
 
+# This tells electron-updater where to look for the latest.yml file.
+# GitHub Actions automatically publishes releases to this repo.
+publish:
+  provider: github
+  owner: NuroTraders
+  repo: bg-remover
+
 win:
   icon: build/icon.ico
   target:
