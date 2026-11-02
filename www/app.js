@@ -1,4 +1,4 @@
-// BG Remover - Phase 4 (Export & Workflow)
+// BG Remover - Phase 5 (Desktop & Automation)
 const MODEL_PATH = "models/u2netp.onnx";
 const SIZE = 320;
 const MAX_SIDE = 2560;
@@ -7,22 +7,27 @@ const SETTINGS_KEY = "bgRemoverSettings.v1";
 const HF = "https://huggingface.co/shozebDev/birefnet-lite-512-onnx/resolve/main/onnx/";
 const ORT_GPU_BASE = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/";
 const MODEL_CACHE = "bg-remover-models";
+const isElectron = navigator.userAgent.includes("Electron");
+
 const MODELS = {
   fast: {
     id: "fast", short: "Fast", label: "Fast",
     info: "Built in (about 4 MB) and works offline. Quick, but rough on hair, thin straps and busy backgrounds.",
   },
   hq: {
-    id: "hq", short: "HQ", label: "High quality", size: 512, url: HF + "model_fp16.onnx", mb: 100,
-    info: "BiRefNet lite (MIT license). Much cleaner edges. Downloaded once (about 100 MB), then runs on your graphics card with WebGPU. Needs Chrome or Edge.",
+    id: "hq", short: "HQ", label: "High quality", size: 512, 
+    url: isElectron ? "models/model_fp16.onnx" : HF + "model_fp16.onnx", 
+    mb: 100,
+    info: "BiRefNet lite (MIT license). Much cleaner edges. " + (isElectron ? "Bundled with the desktop app." : "Downloaded once (about 100 MB), then runs on your graphics card with WebGPU."),
   },
   hq32: {
     id: "hq32", short: "HQ", label: "High quality", size: 512, url: HF + "model.onnx", mb: 192,
     info: "The same model in full precision (about 192 MB). Try this one if the 100 MB version does not start on your PC.",
   },
 };
+
 const modelState = {
-  hq: { cached: false, session: null, busy: false, phase: "", progress: -1, error: "" },
+  hq: { cached: isElectron, session: null, busy: false, phase: "", progress: -1, error: "" },
   hq32: { cached: false, session: null, busy: false, phase: "", progress: -1, error: "" },
 };
 let activeModel = "fast";
@@ -76,7 +81,6 @@ const modelGet = $("model-get");
 const modelRemove = $("model-remove");
 const modelRedo = $("model-redo");
 
-// Phase 1 & 2 DOM
 const themeToggle = $("theme-toggle");
 const themeIcon = $("theme-icon");
 const menuBtn = $("menu-btn");
@@ -893,7 +897,6 @@ copyBtn.addEventListener("click", async () => {
     const canvas = await renderForExport(item);
     canvas.toBlob(async (blob) => {
       try {
-        // Clipboard API mostly supports PNG for images across browsers
         const pngBlob = canvas.toDataURL('image/png');
         const res = await fetch(pngBlob);
         const data = [new ClipboardItem({ "image/png": await res.blob() })];
@@ -912,7 +915,6 @@ copyBtn.addEventListener("click", async () => {
   }
 });
 
-// Web Share API
 if (navigator.share && navigator.canShare) {
   shareBtn.hidden = false;
 }
@@ -1120,8 +1122,7 @@ installBtn.addEventListener("click", async () => {
 });
 window.addEventListener("appinstalled", () => { installBtn.hidden = true; });
 
-const insideDesktopApp = navigator.userAgent.includes("Electron");
-if ("serviceWorker" in navigator && location.protocol.startsWith("http") && !insideDesktopApp) {
+if ("serviceWorker" in navigator && location.protocol.startsWith("http") && !isElectron) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js").catch((err) => console.warn("Service worker not registered:", err));
   });
@@ -1263,7 +1264,7 @@ function refreshModelCard() {
   modelGet.disabled = !!(st && st.busy);
   modelProgress.hidden = !(st && st.busy && st.progress >= 0);
   if (st && st.progress >= 0) modelProgress.value = st.progress;
-  modelRemove.hidden = !(st && st.cached && !st.busy);
+  modelRemove.hidden = !(st && st.cached && !st.busy && !isElectron);
   modelSelect.disabled = !!(modelState.hq.busy || modelState.hq32.busy);
   const stale = items.some((i) => i.status === "done" && i.modelId !== activeModel);
   modelRedo.hidden = !stale;
@@ -1301,14 +1302,17 @@ modelRedo.addEventListener("click", () => {
 });
 
 (async function checkSavedModels() {
-  try {
-    const cache = await caches.open(MODEL_CACHE);
-    for (const id of ["hq", "hq32"]) modelState[id].cached = !!(await cache.match(MODELS[id].url));
-  } catch (e) { /* no saved files */ }
+  if (isElectron) {
+    modelState.hq.cached = true;
+  } else {
+    try {
+      const cache = await caches.open(MODEL_CACHE);
+      for (const id of ["hq", "hq32"]) modelState[id].cached = !!(await cache.match(MODELS[id].url));
+    } catch (e) { /* no saved files */ }
+  }
   refreshModelCard();
 })();
 
-// Theme Toggle
 const savedTheme = localStorage.getItem("bgRemoverTheme");
 if (savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
   document.body.setAttribute("data-theme", "dark");
@@ -1326,7 +1330,6 @@ themeToggle.addEventListener("click", () => {
   themeIcon.textContent = next === "dark" ? "☀️" : "🌙";
 });
 
-// Menu Dropdown
 menuBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   menuDropdown.hidden = !menuDropdown.hidden;
@@ -1337,7 +1340,6 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Modals
 document.querySelectorAll("[data-dialog]").forEach(btn => {
   btn.addEventListener("click", () => {
     const dialogId = btn.getAttribute("data-dialog");
@@ -1366,7 +1368,6 @@ document.querySelectorAll("dialog").forEach(dialog => {
   });
 });
 
-// Touch-up Brush Logic
 let currentStroke = null;
 let brushMode = null;
 
@@ -1430,7 +1431,6 @@ window.addEventListener('pointerup', () => {
   }
 });
 
-// Start
 loadSettings();
 syncExportControls();
 applyBackgroundPreview();

@@ -13,7 +13,7 @@ async function createWindow() {
   const wwwDir = app.isPackaged
     ? path.join(process.resourcesPath, "www")
     : path.resolve(__dirname, "..", "www");
-  const started = await startServer(wwwDir);
+  const started = await startServer(wwwDir, 47329);
   server = started.server;
   const origin = "http://127.0.0.1:" + started.port;
 

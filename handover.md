@@ -15,8 +15,8 @@ Everything must be free. One web codebase (`www/`) serves all three.
 |---|---|
 | Core | HTML + CSS + JavaScript, no framework |
 | AI | onnxruntime-web (wasm, multi-threaded if headers allow) + U2Netp model |
-| Hosting | Cloudflare (main) and GitHub Pages (backup) |
-| Quality strategy | Optional **High quality mode** = download of BiRefNet lite (100MB/192MB) running locally via WebGPU. |
+| Hosting | Cloudflare (main) and GitHub Pages (backup via Actions) |
+| Quality strategy | Optional **High quality mode** = download of BiRefNet lite (100MB/192MB). 100MB bundled directly inside the EXE. |
 | Work rules | Claude writes all code. Only changed or new files are delivered, with their folder. One HANDOVER.md only |
 
 ## 3. Environment (user's PC)

@@ -20,7 +20,7 @@
         <path d="M14 52c0-10 8-16 18-16s18 6 18 16z" fill="#fff"/>
       </svg>
       <div>
-        <strong>BG Remover</strong>
+        <strong>BG Remover <span style="font-size: 11px; font-weight: normal; color: var(--muted); vertical-align: middle;">v1.4.0</span></strong>
         <small>Free · works offline · your photos stay on this computer</small>
       </div>
     </div>
@@ -174,7 +174,6 @@
           <div class="range-line"><input id="target-kb" type="number" min="10" step="10" placeholder="no limit" /><span class="muted small">KB</span></div>
         </div>
         
-        <!-- Phase 4: Custom File Naming -->
         <div class="row">
           <label for="name-pattern">File name</label>
           <input id="name-pattern" type="text" placeholder="{name}-nobg" title="Use {name} for the original file name" />
@@ -182,7 +181,6 @@
 
         <p id="estimate" class="estimate muted small"></p>
         
-        <!-- Phase 4: Action Buttons -->
         <button id="save" class="btn btn-ok btn-block" disabled>Save this image</button>
         <button id="copy" class="btn btn-secondary btn-block" disabled>📋 Copy to Clipboard</button>
         <button id="share" class="btn btn-secondary btn-block" hidden>📱 Share</button>
@@ -210,7 +208,7 @@
   <dialog id="dialog-about" class="modal">
     <div class="modal-head"><h2>About BG Remover</h2><button class="modal-close">×</button></div>
     <div class="modal-body">
-      <p><strong>Version 1.3.0</strong></p>
+      <p><strong>Version 1.4.0</strong></p>
       <p>A free, open-source background removal tool that runs 100% locally on your device.</p>
       <p><strong>Privacy First:</strong> Your photos are never uploaded to a server. The AI runs directly inside your browser or desktop app using ONNX Runtime and WebGPU.</p>
       <p><strong>Credits:</strong></p>
@@ -226,11 +224,16 @@
   <dialog id="dialog-changelog" class="modal">
     <div class="modal-head"><h2>Change Log</h2><button class="modal-close">×</button></div>
     <div class="modal-body">
+      <h3>v1.4.0 - Phase 5 (Desktop & Automation)</h3>
+      <ul>
+        <li>Bundled the 100MB High-Quality model directly into the Windows EXE for instant offline use.</li>
+        <li>Added GitHub Actions to automatically build and release the EXE and PWA.</li>
+      </ul>
       <h3>v1.3.0 - Phase 4 (Export & Workflow)</h3>
       <ul>
         <li>Added <strong>Copy to Clipboard</strong> button.</li>
         <li>Added <strong>Custom File Naming</strong> pattern.</li>
-        <li>Added native <strong>Share</strong> button for compatible devices.</li>
+        <li>Added native <strong>Share</strong> button.</li>
       </ul>
       <h3>v1.2.0 - Phase 2 (Core UX Wins)</h3>
       <ul>
@@ -241,6 +244,16 @@
       <ul>
         <li>Added Navigation Menu (Help, About, Contact, Changelog).</li>
         <li>Added manual Light/Dark theme toggle.</li>
+      </ul>
+
+      <hr style="border: 0; border-top: 1px solid var(--line); margin: 20px 0;" />
+      
+      <h3 style="color: var(--accent);">Upcoming Features</h3>
+      <ul>
+        <li><strong>Auto-Updater (EXE):</strong> Automatic background updates for the Windows app.</li>
+        <li><strong>Batch Progress Bar:</strong> Live count of "Processing 3 of 10...".</li>
+        <li><strong>ML Kit Android:</strong> Lightning-fast native Android processing.</li>
+        <li><strong>Alpha Matting:</strong> Better hair edge smoothing.</li>
       </ul>
     </div>
   </dialog>
