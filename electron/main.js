@@ -6,7 +6,10 @@
 //   "BG Remover.exe" --smoke-test    used by the build: starts the server, checks the files, then quits
 
 const { app, BrowserWindow, Menu, shell, dialog } = require("electron");
-const { autoUpdater } = require("electron-updater");
+// electron-updater is optional: if it is ever missing, the app still starts
+// (fix for the v1.5.0 startup crash "Cannot find module 'electron-updater'")
+let autoUpdater = null;
+try { autoUpdater = require("electron-updater").autoUpdater; } catch (e) { console.warn("Auto-update not available:", e.message); }
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
@@ -117,14 +120,14 @@ async function createWindow() {
   if (process.argv.includes("--dev")) mainWindow.webContents.openDevTools();
 
   // Check for updates silently in the background
-  if (app.isPackaged && !SMOKE) {
+  if (autoUpdater && app.isPackaged && !SMOKE) {
     autoUpdater.checkForUpdatesAndNotify().catch(err => {
       console.warn("Update check failed:", err);
     });
   }
 }
 
-autoUpdater.on("error", (err) => {
+if (autoUpdater) autoUpdater.on("error", (err) => {
   console.warn("Update error:", err);
 });
 
