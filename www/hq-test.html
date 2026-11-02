@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>High quality mode: PC test</title>
+  <style>
+    body { font-family: system-ui, "Segoe UI", Arial, sans-serif; max-width: 860px; margin: 24px auto; padding: 0 16px; line-height: 1.5; color: #1f2430; background: #f4f5f7; }
+    h1 { margin-bottom: 4px; }
+    h2 { margin-top: 28px; font-size: 18px; }
+    button { padding: 9px 18px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font: inherit; cursor: pointer; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    pre { background: #fff; border: 1px solid #dde0e6; border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; min-height: 24px; }
+    progress { width: 100%; height: 14px; }
+    .checker { background-color: #fff; background-image: linear-gradient(45deg,#d9dce1 25%,transparent 25%,transparent 75%,#d9dce1 75%),linear-gradient(45deg,#d9dce1 25%,transparent 25%,transparent 75%,#d9dce1 75%); background-size: 20px 20px; background-position: 0 0, 10px 10px; max-width: 100%; border: 1px solid #dde0e6; border-radius: 8px; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+    .muted { color: #6b7280; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>High quality mode: PC test</h1>
+  <p class="muted">A test page for the better AI model (BiRefNet lite, MIT license). Nothing is uploaded anywhere: the model (about 100 MB) is downloaded once from Hugging Face, saved in this browser, and runs on your graphics card.</p>
+
+  <h2>Step 1: Does this PC support it?</h2>
+  <button id="check">Check my graphics card</button>
+  <pre id="gpu-out"></pre>
+
+  <h2>Step 2: Download the model and try one photo</h2>
+  <p><input id="img" type="file" accept="image/*" /></p>
+  <p><button id="run" disabled>Download model and remove background</button></p>
+  <progress id="prog" value="0" max="100" hidden></progress>
+  <pre id="log"></pre>
+  <div class="row">
+    <canvas id="out" class="checker" hidden></canvas>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/ort.webgpu.min.js"></script>
+  <script>
+    const MODEL_URL = "https://huggingface.co/shozebDev/birefnet-lite-512-onnx/resolve/main/onnx/model_fp16.onnx";
+    const CACHE_NAME = "bg-remover-models";
+    const SIZE = 512;
+    const $ = (id) => document.getElementById(id);
+    const logEl = $("log");
+    const log = (t) => { logEl.textContent += t + "\n"; console.log(t); };
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // ---- Step 1: graphics card check ----
+    $("check").addEventListener("click", async () => {
+      const out = $("gpu-out");
+      out.textContent = "";
+      try {
+        if (!navigator.gpu) {
+          out.textContent = "WebGPU is NOT available in this browser.\nTry Chrome or Edge (up to date) on a PC, and open edge://gpu or chrome://gpu to see why.";
+          return;
+        }
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+          out.textContent = "WebGPU exists, but no graphics adapter was found.\nIt may be switched off, or the graphics driver is too old.";
+          return;
+        }
+        let info = adapter.info || (adapter.requestAdapterInfo ? await adapter.requestAdapterInfo() : {});
+        const L = adapter.limits;
+        out.textContent =
+          "WebGPU is available.\n" +
+          "Graphics: " + [info.vendor, info.architecture, info.device, info.description].filter(Boolean).join(" / ") + "\n" +
+          "Max buffer size: " + Math.round(L.maxBufferSize / 1048576) + " MB\n" +
+          "Storage buffers per stage: " + L.maxStorageBuffersPerShaderStage + "\n" +
+          "16-bit float support: " + (adapter.features.has("shader-f16") ? "yes" : "no") + "\n\n" +
+          "Looks good: you can continue with Step 2.";
+      } catch (err) {
+        out.textContent = "Check failed: " + err.message;
+      }
+    });
+
+    // ---- Step 2: download (with progress and cache), run, show ----
+    const fileInput = $("img");
+    const runBtn = $("run");
+    fileInput.addEventListener("change", () => { runBtn.disabled = !fileInput.files[0]; });
+
+    async function getModelBytes() {
+      let cache = null;
+      try { cache = await caches.open(CACHE_NAME); } catch (e) { /* cache not available */ }
+      if (cache) {
+        const hit = await cache.match(MODEL_URL);
+        if (hit) { log("Model found in this browser's saved files."); return new Uint8Array(await hit.arrayBuffer()); }
+      }
+      log("Downloading the model from Hugging Face (about 100 MB)...");
+      const res = await fetch(MODEL_URL);
+      if (!res.ok) throw new Error("Download failed: HTTP " + res.status);
+      const total = Number(res.headers.get("content-length")) || 0;
+      const reader = res.body.getReader();
+      const chunks = [];
+      let got = 0;
+      const prog = $("prog");
+      prog.hidden = false;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        got += value.length;
+        if (total) prog.value = (got / total) * 100;
+      }
+      prog.hidden = true;
+      const bytes = new Uint8Array(got);
+      let pos = 0;
+      for (const c of chunks) { bytes.set(c, pos); pos += c.length; }
+      if (cache) {
+        try { await cache.put(MODEL_URL, new Response(bytes, { headers: { "content-type": "application/octet-stream" } })); log("Model saved in this browser for next time."); }
+        catch (e) { log("(Could not save the model for later: " + e.message + ")"); }
+      }
+      return bytes;
+    }
+
+    function preprocess(img) {
+      const c = document.createElement("canvas");
+      c.width = c.height = SIZE;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img, 0, 0, SIZE, SIZE);
+      const { data } = ctx.getImageData(0, 0, SIZE, SIZE);
+      const mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225];
+      const plane = SIZE * SIZE;
+      const input = new Float32Array(3 * plane);
+      for (let i = 0; i < plane; i++) for (let ch = 0; ch < 3; ch++) input[ch * plane + i] = (data[i * 4 + ch] / 255 - mean[ch]) / std[ch];
+      return new ort.Tensor("float32", input, [1, 3, SIZE, SIZE]);
+    }
+
+    function showResult(img, logits) {
+      const w = Math.min(img.naturalWidth, 1200);
+      const h = Math.round(img.naturalHeight * (w / img.naturalWidth));
+      const mask = document.createElement("canvas");
+      mask.width = mask.height = SIZE;
+      const mctx = mask.getContext("2d");
+      const md = mctx.createImageData(SIZE, SIZE);
+      for (let i = 0; i < logits.length; i++) md.data[i * 4 + 3] = Math.round(255 / (1 + Math.exp(-logits[i]))); // sigmoid
+      mctx.putImageData(md, 0, 0);
+      const out = $("out");
+      out.width = w; out.height = h; out.hidden = false;
+      const ctx = out.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      ctx.globalCompositeOperation = "destination-in";
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(mask, 0, 0, w, h);
+      ctx.globalCompositeOperation = "source-over";
+    }
+
+    runBtn.addEventListener("click", async () => {
+      runBtn.disabled = true;
+      logEl.textContent = "";
+      $("out").hidden = true;
+      try {
+        if (!navigator.gpu) throw new Error("WebGPU is not available (see Step 1).");
+        const file = fileInput.files[0];
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        await img.decode();
+
+        const t0 = performance.now();
+        const bytes = await getModelBytes();
+        log("Model ready: " + (bytes.length / 1048576).toFixed(0) + " MB, " + ((performance.now() - t0) / 1000).toFixed(1) + " s");
+
+        ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/";
+        log("Starting the graphics card engine (the first time this compiles shaders and can take a while)...");
+        await sleep(30);
+        const t1 = performance.now();
+        const session = await ort.InferenceSession.create(bytes, { executionProviders: ["webgpu"] });
+        log("Engine started in " + ((performance.now() - t1) / 1000).toFixed(1) + " s. Input: " + session.inputNames[0] + ", output: " + session.outputNames[0]);
+
+        const input = preprocess(img);
+        const t2 = performance.now();
+        let res = await session.run({ [session.inputNames[0]]: input });
+        const first = (performance.now() - t2) / 1000;
+        log("First run: " + first.toFixed(2) + " s");
+        const t3 = performance.now();
+        res = await session.run({ [session.inputNames[0]]: input });
+        const second = (performance.now() - t3) / 1000;
+        log("Second run (this is the normal speed): " + second.toFixed(2) + " s");
+
+        const logits = await res[session.outputNames[0]].getData();
+        showResult(img, logits);
+        log("\nDone. Compare the picture below with your original. Send Claude a screenshot of this page, including the lines above.");
+      } catch (err) {
+        console.error(err);
+        log("\nFAILED: " + (err && err.message ? err.message : err));
+        log("Send Claude a screenshot of this page.");
+      } finally {
+        runBtn.disabled = !fileInput.files[0];
+      }
+    });
+  </script>
+</body>
+</html>

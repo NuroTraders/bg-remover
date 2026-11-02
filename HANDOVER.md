@@ -3,10 +3,10 @@
 One file for the whole project. New entries are added to the Task log at the bottom after each task.
 
 ## 1. Goal
-Free, offline image background remover. Delivered as:
-1. **PWA** (primary): hosted free on GitHub Pages, installable, works offline
-2. **EXE**: Windows app (Electron)
-3. **APK**: Android app (Capacitor), released on GitHub Releases
+Free, offline image background remover, **PC first**. Delivered as:
+1. **PWA** (primary): hosted free on Cloudflare (and GitHub Pages as a backup), installable, works offline
+2. **EXE**: Windows app (Electron): installer and portable
+3. **APK**: Android app (Capacitor). **ON HOLD** by the user's decision (Task 6/7 results: about 12 s per photo on the phone). The `android/` folder and `capacitor.config.json` stay in the repo untouched. The phone Save / Share code (Capacitor Filesystem + Share) was removed from `app.js` in Task 8 and is still in the Git history (Task 7 version).
 
 Everything must be free. One web codebase (`www/`) serves all three.
 
@@ -16,7 +16,8 @@ Everything must be free. One web codebase (`www/`) serves all three.
 | Core | HTML + CSS + JavaScript, no framework |
 | AI | onnxruntime-web (wasm, single thread) + U2Netp model (Apache 2.0, about 4.5 MB) |
 | Avoid | RMBG-1.4 (non-commercial license) |
-| Hosting | GitHub Pages via GitHub Actions, plus Cloudflare (faster in Bangladesh, free) |
+| Hosting | Cloudflare (main, much faster in Bangladesh, free) and GitHub Pages (backup) |
+| Quality strategy | A server ("online mode") is NOT needed: no free always-on GPU server exists, and the quality comes from the model, not from being online. Plan: optional **High quality mode** = one-time download of a better model (BiRefNet lite, MIT license) that runs locally on the PC's graphics card with WebGPU, falling back to the fast model |
 | Windows | Electron (planned) |
 | Android | Capacitor (planned) |
 | Work rules | Claude writes all code. Only changed or new files are delivered, with their folder. One HANDOVER.md only |
@@ -31,6 +32,8 @@ bg-remover/
 ├── wrangler.jsonc                 Cloudflare: serve the www folder as static assets
 ├── electron/                      Windows app: main.js (window) + server.js (local server for www)
 ├── electron-builder.yml           installer + portable EXE settings
+├── capacitor.config.json          Android app settings (appId com.nurotraders.bgremover, webDir www)
+├── android/                       Android Studio project (created by `npx cap add android`; committed)
 ├── build/icon.ico                 app icon for the EXE
 ├── dist/                          build output (not committed)
 ├── scripts/setup.js               copies AI runtime + downloads model into www/
@@ -62,8 +65,8 @@ npm start        (opens http://localhost:5173)
 7. Install button and service worker make it a PWA (only on http/https).
 
 ## 7. Known issues and limits
-- U2Netp is fast but rough on fine edges. Faded leftover patches can remain (seen in test 1). Plan: High Quality model and eraser/restore brush.
-- Saved image is at most 2048 px on the longest side.
+- U2Netp is fast but rough on fine edges and complex scenes (see phone test findings in the Task log). Plan: fine-tune sliders (Task 7), touch-up brush (Task 10), better model (Task 11).
+- Saved image is at most 2048 px on the longest side (1600 px in the phone app).
 - Save PNG uses a browser download. Inside Capacitor (APK) this needs another method.
 - Service worker cache name is `bg-remover-v1` in `sw.js`. Bump it if model or runtime files change.
 
@@ -76,14 +79,35 @@ npm start        (opens http://localhost:5173)
 - **Task 5a** (done): Windows app (`npm run desktop`) works, tested by the user (after `npm run setup` was run in the project folder).
 - **Task 5c** (done): Cloudflare hosting. The first load of the GitHub Pages site felt slow (about 19 MB download). Cloudflare created a **Workers** project (not classic Pages) from NuroTraders/bg-remover. Its first build had Build command `None` and Deploy command `npx wrangler deploy`, with no assets folder configured. Fix: add `wrangler.jsonc` (assets directory `./www`) to the repo root, set Build command `npm ci && npm run setup`, add build variable `ELECTRON_SKIP_BINARY_DOWNLOAD=1`, keep Deploy command `npx wrangler deploy`. **Result: loads and says Ready in about 2 to 4 seconds, much faster than GitHub Pages.** Cloudflare now rebuilds on every push to main. Cloudflare is the main web address to share; GitHub Pages stays as a backup.
 
-- **Task 5b** (code delivered, awaiting test): Windows installer and portable EXE with electron-builder. `electron-builder.yml` packs only `electron/` code; `www/` is copied next to the app as plain files (`extraResources`), so `main.js` reads it from `process.resourcesPath/www` when installed (`app.isPackaged`). Targets: NSIS installer (`BG-Remover-Setup-0.1.0.exe`, user can choose folder) and portable (`BG-Remover-Portable-0.1.0.exe`). Checked in a Linux test build: config loads and `www/models` + `www/ort` end up in `resources/www`. Tool versions seen: electron 45.2.1, electron-builder 26.18.0. Build: `npm install --save-dev electron-builder`, `npm run setup`, `npx electron-builder --win`. Known gotchas: unsigned EXE shows a Windows SmartScreen warning; if the build errors about a symbolic link, turn on Windows Developer Mode or run the terminal as administrator; "author is missed in package.json" is only a warning.
+- **Task 5b** (done, installer tested: 1.5 s per photo, slider and colors work, app icon shows; portable EXE test not reported): Windows installer and portable EXE with electron-builder. `electron-builder.yml` packs only `electron/` code; `www/` is copied next to the app as plain files (`extraResources`), so `main.js` reads it from `process.resourcesPath/www` when installed (`app.isPackaged`). Targets: NSIS installer (`BG-Remover-Setup-0.1.0.exe`, user can choose folder) and portable (`BG-Remover-Portable-0.1.0.exe`). Checked in a Linux test build: config loads and `www/models` + `www/ort` end up in `resources/www`. Tool versions seen: electron 45.2.1, electron-builder 26.18.0. Build: `npm install --save-dev electron-builder`, `npm run setup`, `npx electron-builder --win`. Known gotchas: unsigned EXE shows a Windows SmartScreen warning; if the build errors about a symbolic link, turn on Windows Developer Mode or run the terminal as administrator; "author is missed in package.json" is only a warning.
+
+- **Task 6** (done, tested on a phone: installs, works offline, colors and slider work; share sheet works after retries, first try gave `writeFile failed`; title is not hidden under the status bar): Android app with Capacitor 8 (tested in a scratch folder: `cap add android` and `cap sync` work; plugins @capacitor/filesystem 8.1.5 and @capacitor/share 8.0.3). `www/app.js` detects the app with `window.Capacitor.isNativePlatform()`: Save PNG becomes **Save / Share** (writes the PNG to the cache folder, opens the Android share sheet), and the service worker is skipped. Steps: `npm install @capacitor/core @capacitor/android @capacitor/filesystem @capacitor/share`, `npm install --save-dev @capacitor/cli`, `npm run setup`, `npx cap add android`, `npx cap sync android`, `npx cap open android`, then Build > Build APK(s) in Android Studio (debug APK at `android/app/build/outputs/apk/debug/app-debug.apk`). Things to watch: `.mjs` runtime file must load in the Android WebView (if the status stays on Loading, send a screenshot), layout under the status bar (edge-to-edge), Android Studio may need an update for Capacitor 8. Release signing (keystore) comes with the GitHub Actions task.
+
+- **Phone test findings (Task 6):** about 11 to 12 s per photo in the APK, while the website in the phone browser felt faster (Windows: about 1.5 s). Cut-out is not perfect with U2Netp: parts of the body or chair removed or half transparent, dresses partly transparent, a red watch screen fully transparent, light blue halo along edges. No batch mode. Saved files are as big as or bigger than the original photo.
+- **Task 7** (done, tested on the phone): speed and quality quick wins. (1) The transparent result is now made with canvas compositing (`destination-in`) instead of looping over every pixel in JavaScript. (2) The status line shows a time breakdown: `photo` (decode and shrink) · `AI` · `finish`, so we can see where the time goes on the phone. (3) Phone photos are shrunk to 1600 px (desktop 2048 px). (4) **Fine-tune the cut-out**: sliders `Keep more / Remove more` and `Soft edge / Sharp edge` change the mask live, plus Reset. (5) Save / Share writes the file in 768 KB pieces (writeFile then appendFile) to avoid the `writeFile failed` error. (6) Hint about drag and Ctrl+V hidden in the phone app. Files: `www/index.html`, `www/style.css`, `www/app.js`.
+
+- **Task 7 phone results:** time breakdown on a portrait photo: total 12.0 s = photo 0.3 s + **AI 11.7 s** + finish 0.0 s. So the canvas compositing fix worked, but the cost is the AI step itself (U2Netp running in the phone's WebView, single thread, about 8 times slower than the Windows PC at about 1.5 s). The fine-tune sliders work: tested at the extremes only. `Keep more` brings back a half-transparent scarf but also background clutter; `Remove more` makes the face transparent; `Sharp edge` makes the scarf solid; extremes together leave only the face. The model mistakes white dots on a red scarf for background and leaves background clutter above the head, which sliders cannot fix. Minor UI note: the label `Remove more` wraps to two lines on a phone.
+- **Open question for Task 11 (engine):** (a) Android: Google ML Kit subject segmentation through a small Kotlin Capacitor plugin (expected well under 1 s, usually better edges; needs Google Play services and a one-time model download by Google, Android only); (b) PC and web: optional larger model downloaded on demand (more quality, slower), multi-threading by sending COOP/COEP headers (Cloudflare `_headers` file and `electron/server.js`; not possible in the Android WebView); (c) touch-up brush (Task 10) works with any engine. Suggested order: Task 8 compressor, Task 11 ML Kit on Android, Task 9 batch, Task 10 brush, bigger model for PC. Waiting for the user to confirm. Also requested: the same photo timed in the phone's browser on the live site, to compare with the app.
+
+- **Task 8** (done, tested on the PC in Edge with 4 photos): PC edition, new look and workflow. Files: `www/index.html`, `www/style.css`, `www/app.js`, `electron/main.js`, `electron/server.js`. (1) Layout: image list on the left, big preview in the middle (drag the line over the picture to compare), settings on the right; dark mode follows Windows; narrow windows stack. (2) **Batch**: add many images at once (button, drop, paste), processed one after another, thumbnails with status, remove one or clear all, arrow keys switch, Delete removes, Ctrl+S saves. (3) **Background**: transparent, 7 colors, any color, or a picture (cover-fitted). (4) **Fine-tune** sliders are per image, with Reset and Apply to all. (5) **Save**: PNG / WebP / JPG, quality, maximum size in pixels, **maximum file size in KB** (lowers quality first, then shrinks), live file-size estimate next to the original photo size, single save or **all as ZIP** (own ZIP writer, no library). Settings are remembered. (6) Processing limit raised to 2560 px. (7) Windows app now uses fixed port 47329 (falls back to a free port) so remembered settings survive restarts. Tested in a simulated browser (jsdom) with a fake canvas and fake AI: add 3 images, select, sliders, backgrounds, WebP with 100 KB limit, ZIP (valid, opens with Python zipfile), delete, clear: no errors. Not tested in a real browser yet.
+
+- **Task 8 test findings (PC, Edge):** layout, queue, compare line, batch, thumbnails and the file-size estimate all work. Issues seen: (1) the header logo showed as a broken image (the PNG icon did not load); (2) the `Remove more` label wrapped and the 8th swatch dropped to a second row; (3) PNG output is much bigger than the original photo (for example 721 KB PNG from an 82 KB JPG), so WebP or JPG with a size limit is the answer for small files; (4) a light blue halo along hair and scarf edges and a translucent streak on one scarf come from the small model's 320 px mask (to be fixed by the High quality model and the touch-up brush); (5) one test file was a screenshot of the phone app, so its cut-out looked odd by design.
+- **Task 8b** (done): polish. The logo is now an inline SVG and the favicon an inline SVG (no file to break); slider labels sit above each slider; swatches are smaller so all 8 fit in one row. Files: `www/index.html`, `www/style.css`. `app.js` unchanged.
+- **Task 9, step 1** (code delivered, awaiting test): `www/hq-test.html`, a stand-alone test page for High quality mode. Step 1 on the page reads the graphics card via WebGPU (adapter, memory, storage buffers, 16-bit float). Step 2 downloads the model once (`onnx/model_fp16.onnx` from `shozebDev/birefnet-lite-512-onnx`, about 100 MB, MIT; fixed 512 x 512 input `input_image`, ImageNet normalization, output `output_image` logits, apply a sigmoid), keeps it in Cache Storage, starts ONNX Runtime Web WebGPU (`ort.webgpu.min.js` from jsDelivr, version 1.31.1), runs twice (first run includes shader compile) and shows the transparent result. The model page says it runs on the WebGPU default limits. Facts: the WebGPU runtime wasm files are 29.5 MB (jsep) and 28.7 MB (asyncify), over Cloudflare's 25 MiB per file limit for assets, so the website must load the runtime from a CDN; the Windows app can bundle it. Also available: `onnx-community/BiRefNet_lite-ONNX` (1024 px, heavier: needs 17+ storage buffers and much GPU memory).
+
+- **User feedback after Task 8b:** the new layout works in Edge (single and multi photo), JPG with no background gives 80 KB from an 82 KB original. The cut-out quality is the same as before because the Fast model did not change; the user did not find a way to download another model (the stand-alone `hq-test.html` page was not opened) and asked for a model download option inside the app.
+- **Task 10** (code delivered, awaiting test): **AI model card inside the app** (top of the right panel, usable even before adding images). Choices: Fast (built in), High quality (BiRefNet lite 512 fp16, about 100 MB, from Hugging Face), High quality compatible (fp32, about 192 MB). Download with progress, kept in Cache Storage (`bg-remover-models`), Remove download button, graphics runtime (`ort.webgpu.min.js` 1.31.1 from jsDelivr) loaded only when needed and kept apart from the built-in runtime (the global `ort` is saved and restored), session on the `webgpu` provider. `Redo all images with ...` button re-runs every image so the same photo can be compared across models; each queue row shows time and model (for example `Done · 1.4 s · HQ`). If High quality fails while processing, the app switches back to Fast with a message and carries on. Masks are now stored with their size (320 for Fast, 512 for High quality); High quality output is a sigmoid of logits. `sw.js` now only deletes caches named `bg-remover-v...`, so downloaded models are never wiped. Simulated-browser test (fake GPU, fake download): download with progress, saved, no second download, redo, save, fallback on GPU error, remove: all pass. Real WebGPU, real download and real speed are untested. Limits: runtime comes from the CDN (internet needed to start High quality; the model itself is saved); Cloudflare assets allow 25 MiB per file and the WebGPU wasm files are 29 MB, so they cannot be hosted there.
 
 ## 9. Next steps
-1. Test Task 5b: build and run the installer and the portable EXE, then commit (without `dist/`).
-2. Task 6: Android app with Capacitor (Save PNG needs another method there).
-3. GitHub Actions to build EXE and APK into Releases.
-4. README and credits (U2Net / U2Netp, Apache 2.0).
-5. Version 2: image or gradient backgrounds, eraser/restore brush, High Quality model, batch.
+1. Test Task 10 on the PC in Edge: choose High quality, download, check the speed and the cut-out against Fast on the same photos (Redo all images). Report: download worked or not, error text if any, seconds per photo, and the quality.
+2. If High quality is good: keep it as an option (maybe default on PCs with WebGPU), bundle the graphics runtime for the Windows app so it works offline, improve the mask resolution (1024 px model or sharper upscaling), and add a clean-edge step for the halo.
+3. If it fails or is too slow: try the compatible (fp32) file, then other models.
+4. Send COOP/COEP headers (Cloudflare `_headers`, `electron/server.js`) so the Fast model can use several threads.
+5. Touch-up brush (erase / restore).
+6. Rebuild the Windows installer and portable EXE (`npm run setup`, `npx electron-builder --win`), first GitHub Release (v0.1.0).
+7. GitHub Actions to build the EXE into Releases automatically.
+8. README and credits (U2Net / U2Netp Apache 2.0, BiRefNet MIT).
+9. Later, if wanted: resume the Android app.
 
 ## 10. How to resume
 Tell Claude where you are (for example "Task 4 tested, continue") and send a screenshot or error text if something failed.
