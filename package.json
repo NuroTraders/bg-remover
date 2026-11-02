@@ -12,7 +12,7 @@
     "dist": "npm run setup && electron-builder --win"
   },
   "dependencies": {
-    "electron-updater": "^6.1.7",
+    "electron-updater": "^6.8.11",
     "onnxruntime-web": "^1.23.0"
   },
   "devDependencies": {
