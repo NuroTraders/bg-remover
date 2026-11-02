@@ -1134,6 +1134,7 @@ function loadOrtGpu() {
     const previous = window.ort;
     const tag = document.createElement("script");
     tag.src = ORT_GPU_BASE + "ort.webgpu.min.js";
+    tag.crossOrigin = "anonymous"; // needed because the page sends Cross-Origin-Embedder-Policy: require-corp
     tag.onload = () => {
       const lib = window.ort;
       window.ort = previous;

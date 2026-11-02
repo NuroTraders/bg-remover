@@ -1,65 +1,75 @@
-name: Build & Release
+# Builds the Windows installer and the portable EXE on GitHub, checks that the built app really starts,
+# and attaches both files to a GitHub Release.
+#
+#   Make a release:   git tag v1.4.0   then   git push origin v1.4.0
+#   Or run it by hand: GitHub > Actions > "Build Windows app" > Run workflow
+#
+# The website (GitHub Pages) is published by deploy.yml, not here.
+
+name: Build Windows app
 
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ]
-  pull_request:
-    branches: [ main ]
+    tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: write   # needed to create the release
 
 jobs:
-  build:
+  windows:
     runs-on: windows-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: 22      # Electron 45 needs Node 22.12 or newer
+          cache: npm
 
-      - name: Install Dependencies
+      - name: Install tools
         run: npm ci
 
-      - name: Setup AI Models (Fast & Runtime)
+      - name: Download the AI runtime and the Fast model
         run: npm run setup
 
-      - name: Download HQ Model for Bundling (100MB)
+      - name: Download the High quality model to put inside the app (about 100 MB)
         shell: bash
         run: |
           mkdir -p www/models
-          curl -L "https://huggingface.co/shozebDev/birefnet-lite-512-onnx/resolve/main/onnx/model_fp16.onnx" -o www/models/model_fp16.onnx
+          curl -L --fail --retry 3 -o www/models/model_fp16.onnx "https://huggingface.co/shozebDev/birefnet-lite-512-onnx/resolve/main/onnx/model_fp16.onnx"
+          ls -l www/models
 
-      - name: Build Windows EXE
+      - name: Build the Windows app
         run: npx electron-builder --win --publish never
 
-      - name: Upload Windows Artifacts
-        uses: actions/upload-artifact@v4
+      - name: Check the built app has all its files
+        shell: bash
+        run: |
+          ls -l dist
+          for f in index.html app.js ort/ort.wasm.min.js ort/ort-wasm-simd-threaded.wasm models/u2netp.onnx models/model_fp16.onnx; do
+            test -s "dist/win-unpacked/resources/www/$f" || { echo "MISSING in the built app: $f"; exit 1; }
+          done
+          echo "All files are inside the built app."
+
+      - name: Start the built app once (smoke test)
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path "dist/win-unpacked/BG Remover.exe").Path
+          $p = Start-Process -FilePath $exe -ArgumentList "--smoke-test" -PassThru
+          $finished = $p.WaitForExit(120000)
+          $log = Join-Path $env:TEMP "bg-remover-smoke.log"
+          if (Test-Path $log) { Get-Content $log }
+          if (-not $finished) { $p.Kill(); throw "Smoke test timed out" }
+          if ($p.ExitCode -ne 0) { throw "Smoke test failed with exit code $($p.ExitCode)" }
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: windows-installer
+          name: windows-app
           path: dist/*.exe
 
-      - name: Deploy PWA to GitHub Pages
-        if: github.ref == 'refs/heads/main'
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./www
-          # cname: bg.nurotraders.com # Optional: Remove or change this if you don't have a custom domain
-
-      - name: Create GitHub Release
+      - name: Create the GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.exe
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
