@@ -51,6 +51,9 @@ function fail(title, err) {
 
 // ---- smoke test (run by the build): are all files there and served correctly? ----
 async function smokeTest() {
+  if (app.isPackaged && !autoUpdater) {
+    throw new Error("electron-updater is missing from the packaged Windows app");
+  }
   const wwwDir = wwwFolder();
   smokeLog("www folder: " + wwwDir);
   const started = await startServer(wwwDir, 0);
