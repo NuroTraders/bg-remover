@@ -16,7 +16,7 @@ Everything must be free. One web codebase (`www/`) serves all three.
 | Core | HTML + CSS + JavaScript, no framework |
 | AI | onnxruntime-web (wasm, multi-threaded if headers allow) + U2Netp model |
 | Hosting | Cloudflare (main) and GitHub Pages (backup via Actions) |
-| Quality strategy | Optional **High quality mode** = download of BiRefNet lite (100MB/192MB). 100MB bundled directly inside the EXE. |
+| Quality strategy | Optional **High quality mode** = user-initiated BiRefNet Lite download (100MB/192MB), cached on the device and omitted from the Windows installer. Remember the selected model between launches. |
 | Work rules | Claude writes all code. Only changed or new files are delivered, with their folder. One HANDOVER.md only |
 
 ## 3. Environment (user's PC)
@@ -34,9 +34,10 @@ Windows, Node.js v24.22.0, npm 11.19.1, Git 2.56.0, VS Code. onnxruntime-web v1.
 
 ## 5. Current release workflow
 - Cloudflare remains the primary host through its separate deployment setup; `.github/workflows/deploy.yml` is the sole GitHub Pages publisher and serves as backup. `.github/workflows/build.yml` only builds Windows artifacts and publishes tagged GitHub Releases.
-- Windows builds verify U2Netp against its expected byte count and SHA-256. The bundled BiRefNet Lite model is downloaded from the pinned Studio Ludens revision `962e67969ec6acec9c19fab76acee4f5e22e990c` and checked against SHA-256 `4059896039dfccb0f15b9080ff06d11d90e499449bb045e797055eb8901cf5f4`. Its MIT license is included under `www/models/BIREFNET-LICENSE.txt`.
+- Windows builds verify U2Netp against its expected byte count and SHA-256. BiRefNet Lite is offered as an explicit on-demand download from the app, saved in browser storage, and excluded from Windows installer resources even if a local model file exists. Its MIT license is included under `www/models/BIREFNET-LICENSE.txt`.
 - A `v*` release tag must match `package.json`; the packaged Windows app must pass `--smoke-test` before artifact upload. Build and pull request jobs use read-only contents permission; only the tagged release job receives release write permission.
 
 ## 6. Task log
-- 2026-11-27: Implemented the first planned release-reliability work. Removed the competing Pages deploy from `build.yml`, kept the official `deploy.yml` publisher, added U2Netp integrity verification, pinned and verified the HQ model, included its license, added tag/version validation and packaged app smoke testing, and isolated release write permissions. Reviewed the resulting workflow and script changes locally; the GitHub Actions run is the required Windows package and deployment verification.
-- 2026-11-27: Prepared release version 1.5.2 for the release-reliability changes. Updated the app display version and npm lockfile to match. Create/push the matching tag only after this commit is on `main`; the Actions run must pass before confirming the release.
+- 2026-11-27: Implemented the first planned release-reliability work. Removed the competing Pages deploy from `build.yml`, kept the official `deploy.yml` publisher, added U2Netp integrity verification, added tag/version validation and packaged app smoke testing, and isolated release write permissions. Reviewed the workflow and script changes locally; GitHub Actions must verify the Windows package and deployment.
+- 2026-11-27: Prepared release version 1.5.2 and updated the app display version and npm lockfile to match. The 1.5.2 tag was created before the HQ packaging failure was reported.
+- 2026-11-27: Fixed high-quality model behavior after the v1.5.2 build found the bundled model checksum did not match. Removed HQ model bundling from CI and the installer path, restored explicit on-demand downloads, persisted model choice, and added automatic restoration of a cached selected model when the app reopens. Bumped this fix to v1.5.3 so it can be released from a new tag.

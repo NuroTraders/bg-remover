@@ -20,7 +20,7 @@
         <path d="M14 52c0-10 8-16 18-16s18 6 18 16z" fill="#fff"/>
       </svg>
       <div>
-        <strong>BG Remover <span style="font-size: 11px; font-weight: normal; color: var(--muted); vertical-align: middle;">v1.5.2</span></strong>
+        <strong>BG Remover <span style="font-size: 11px; font-weight: normal; color: var(--muted); vertical-align: middle;">v1.5.3</span></strong>
         <small>Free · works offline · your photos stay on this computer</small>
       </div>
     </div>
@@ -91,8 +91,8 @@
         <h3>AI model</h3>
         <select id="model-select" aria-label="AI model" title="Choose the AI engine">
           <option value="fast">Fast (built in, works offline)</option>
-          <option value="hq">High quality (download 100 MB)</option>
-          <option value="hq32">High quality, most compatible (192 MB)</option>
+          <option value="hq">High quality (download on demand, 100 MB)</option>
+          <option value="hq32">High quality, most compatible (download on demand, 192 MB)</option>
         </select>
         <p id="model-info" class="muted small model-info"></p>
         <p id="model-state" class="small model-state"></p>
@@ -208,7 +208,7 @@
   <dialog id="dialog-about" class="modal">
     <div class="modal-head"><h2>About BG Remover</h2><button class="modal-close">×</button></div>
     <div class="modal-body">
-      <p><strong>Version 1.5.2</strong></p>
+      <p><strong>Version 1.5.3</strong></p>
       <p>A free, open-source background removal tool that runs 100% locally on your device.</p>
       <p><strong>Privacy First:</strong> Your photos are never uploaded to a server. The AI runs directly inside your browser or desktop app using ONNX Runtime and WebGPU.</p>
       <p><strong>Credits:</strong></p>
@@ -224,10 +224,10 @@
   <dialog id="dialog-changelog" class="modal">
     <div class="modal-head"><h2>Change Log</h2><button class="modal-close">×</button></div>
     <div class="modal-body">
-      <h3>v1.5.2 - Reliable Releases</h3>
+      <h3>v1.5.3 - Optional High Quality Model</h3>
       <ul>
-        <li>Verified AI model downloads and pinned the high-quality model version.</li>
-        <li>Improved Windows release checks and included the model license.</li>
+        <li>High-quality models are downloaded only when you choose to use them; they are not included in the Windows installer.</li>
+        <li>Your selected model is remembered and restored when you reopen the app.</li>
       </ul>
       <h3>v1.5.1 - Desktop Fix</h3>
       <ul>

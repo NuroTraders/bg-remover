@@ -3,6 +3,7 @@ const MODEL_PATH = "models/u2netp.onnx";
 const SIZE = 320;
 const MAX_SIDE = 2560;
 const SETTINGS_KEY = "bgRemoverSettings.v1";
+const ACTIVE_MODEL_KEY = "bgRemoverActiveModel.v1";
 
 const HF = "https://huggingface.co/shozebDev/birefnet-lite-512-onnx/resolve/main/onnx/";
 const ORT_GPU_BASE = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/";
@@ -16,9 +17,9 @@ const MODELS = {
   },
   hq: {
     id: "hq", short: "HQ", label: "High quality", size: 512, 
-    url: isElectron ? "models/model_fp16.onnx" : HF + "model_fp16.onnx", 
+    url: HF + "model_fp16.onnx",
     mb: 100,
-    info: "BiRefNet lite (MIT license). Much cleaner edges. " + (isElectron ? "Bundled with the desktop app." : "Downloaded once (about 100 MB), then runs on your graphics card with WebGPU."),
+    info: "BiRefNet lite (MIT license). Downloaded only when you choose to use it, then saved on this computer. Requires WebGPU.",
   },
   hq32: {
     id: "hq32", short: "HQ", label: "High quality", size: 512, url: HF + "model.onnx", mb: 192,
@@ -27,10 +28,16 @@ const MODELS = {
 };
 
 const modelState = {
-  hq: { cached: isElectron, session: null, busy: false, phase: "", progress: -1, error: "" },
+  hq: { cached: false, session: null, busy: false, phase: "", progress: -1, error: "" },
   hq32: { cached: false, session: null, busy: false, phase: "", progress: -1, error: "" },
 };
 let activeModel = "fast";
+let preferredModel = (() => {
+  try {
+    const saved = localStorage.getItem(ACTIVE_MODEL_KEY);
+    return ["fast", "hq", "hq32"].includes(saved) ? saved : "fast";
+  } catch (e) { return "fast"; }
+})();
 let ortGpu = null;
 let ortGpuPromise = null;
 
@@ -74,6 +81,7 @@ const shareBtn = $("share");
 const saveAllBtn = $("save-all");
 const dropOverlay = $("drop-overlay");
 const modelSelect = $("model-select");
+modelSelect.value = preferredModel;
 const modelInfo = $("model-info");
 const modelStateEl = $("model-state");
 const modelProgress = $("model-progress");
@@ -1251,6 +1259,7 @@ async function startHq(def) {
     lib.env.wasm.wasmPaths = ORT_GPU_BASE;
     st.session = await lib.InferenceSession.create(bytes, { executionProviders: ["webgpu"] });
     activeModel = def.id;
+    rememberPreferredModel(def.id);
   } catch (err) {
     console.error(err);
     st.session = null;
@@ -1288,19 +1297,25 @@ function refreshModelCard() {
   modelGet.disabled = !!(st && st.busy);
   modelProgress.hidden = !(st && st.busy && st.progress >= 0);
   if (st && st.progress >= 0) modelProgress.value = st.progress;
-  modelRemove.hidden = !(st && st.cached && !st.busy && !isElectron);
+  modelRemove.hidden = !(st && st.cached && !st.busy);
   modelSelect.disabled = !!(modelState.hq.busy || modelState.hq32.busy);
   const stale = items.some((i) => i.status === "done" && i.modelId !== activeModel);
   modelRedo.hidden = !stale;
   modelRedo.textContent = "Redo all images with " + MODELS[activeModel].label;
 }
 
+function rememberPreferredModel(id) {
+  if (!["fast", "hq", "hq32"].includes(id)) return;
+  preferredModel = id;
+  try { localStorage.setItem(ACTIVE_MODEL_KEY, id); } catch (e) { /* ignore */ }
+}
+
 modelSelect.addEventListener("change", refreshModelCard);
 modelGet.addEventListener("click", async () => {
   const id = modelSelect.value;
-  if (id === "fast") { activeModel = "fast"; refreshModelCard(); return; }
+  if (id === "fast") { activeModel = "fast"; rememberPreferredModel(id); refreshModelCard(); return; }
   const st = modelState[id];
-  if (st.session) { activeModel = id; refreshModelCard(); return; }
+  if (st.session) { activeModel = id; rememberPreferredModel(id); refreshModelCard(); return; }
   
   const gpuOk = await checkWebGPU();
   if (!gpuOk) return; 
@@ -1315,7 +1330,11 @@ modelRemove.addEventListener("click", async () => {
   st.cached = false;
   st.error = "";
   if (st.session) { try { if (st.session.release) st.session.release(); } catch (e) { /* ignore */ } st.session = null; }
-  if (activeModel === id) activeModel = "fast";
+  if (activeModel === id) {
+    activeModel = "fast";
+    modelSelect.value = "fast";
+    rememberPreferredModel("fast");
+  }
   refreshModelCard();
 });
 modelRedo.addEventListener("click", () => {
@@ -1326,15 +1345,19 @@ modelRedo.addEventListener("click", () => {
 });
 
 (async function checkSavedModels() {
-  if (isElectron) {
-    modelState.hq.cached = true;
-  } else {
-    try {
-      const cache = await caches.open(MODEL_CACHE);
-      for (const id of ["hq", "hq32"]) modelState[id].cached = !!(await cache.match(MODELS[id].url));
-    } catch (e) { /* no saved files */ }
-  }
+  try {
+    const cache = await caches.open(MODEL_CACHE);
+    for (const id of ["hq", "hq32"]) modelState[id].cached = !!(await cache.match(MODELS[id].url));
+  } catch (e) { /* no saved files */ }
   refreshModelCard();
+  if (preferredModel !== "fast" && modelState[preferredModel].cached) {
+    if (await checkWebGPU(true)) {
+      await startHq(MODELS[preferredModel]);
+    } else {
+      modelState[preferredModel].error = "This saved model cannot start because WebGPU is unavailable on this device.";
+      refreshModelCard();
+    }
+  }
 })();
 
 const savedTheme = localStorage.getItem("bgRemoverTheme");

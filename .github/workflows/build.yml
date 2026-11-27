@@ -28,9 +28,6 @@ jobs:
       - name: Setup AI Models (Fast & Runtime)
         run: npm run setup
 
-      - name: Download HQ Model for Bundling (100MB)
-        run: node scripts/download-hq-model.js
-
       - name: Check release tag matches package version
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh

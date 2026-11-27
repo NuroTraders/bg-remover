@@ -58,7 +58,7 @@ function startServer(wwwDir, preferredPort) {
           "Cross-Origin-Embedder-Policy": "require-corp",
         });
         if (req.method === "HEAD") return res.end();
-        // stream the file (the High quality model is about 100 MB)
+        // Stream model files without loading them fully into memory.
         fs.createReadStream(filePath)
           .on("error", () => res.destroy())
           .pipe(res);
