@@ -82,6 +82,12 @@ const saveAllBtn = $("save-all");
 const dropOverlay = $("drop-overlay");
 const modelSelect = $("model-select");
 modelSelect.value = preferredModel;
+const creatorPhoto = $("creator-photo");
+if (creatorPhoto) {
+  const hideBrokenCreatorPhoto = () => creatorPhoto.remove();
+  creatorPhoto.addEventListener("error", hideBrokenCreatorPhoto, { once: true });
+  if (creatorPhoto.complete && creatorPhoto.naturalWidth === 0) hideBrokenCreatorPhoto();
+}
 const modelInfo = $("model-info");
 const modelStateEl = $("model-state");
 const modelProgress = $("model-progress");

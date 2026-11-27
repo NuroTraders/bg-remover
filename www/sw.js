@@ -8,6 +8,7 @@ const PRECACHE = [
   "style.css",
   "app.js",
   "manifest.webmanifest",
+  "nasirpintu.jpg",
   "ort/ort.wasm.min.js",
   "ort/ort-wasm-simd-threaded.mjs",
   "ort/ort-wasm-simd-threaded.wasm",

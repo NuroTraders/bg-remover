@@ -1,9 +1,10 @@
 {
   "name": "bg-remover",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "private": true,
-  "description": "Free offline background remover (website, installable app and Windows app)",
-  "author": "NuroTraders",
+  "description": "Free, private background remover crafted with care by NasirPintu",
+  "author": "NasirPintu <https://github.com/nasiropintu>",
+  "homepage": "https://github.com/NuroTraders/bg-remover",
   "main": "electron/main.js",
   "scripts": {
     "setup": "node scripts/setup.js",

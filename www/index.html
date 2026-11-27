@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BG Remover</title>
-  <meta name="description" content="Free, offline background remover" />
+  <title>BG Remover · NasirPintu</title>
+  <meta name="author" content="NasirPintu" />
+  <meta name="description" content="A free, private background remover, crafted with care by NasirPintu." />
   <meta name="theme-color" content="#2563eb" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Ccircle cx='32' cy='24' r='9' fill='%23fff'/%3E%3Cpath d='M14 52c0-10 8-16 18-16s18 6 18 16z' fill='%23fff'/%3E%3C/svg%3E" />
@@ -20,7 +21,7 @@
         <path d="M14 52c0-10 8-16 18-16s18 6 18 16z" fill="#fff"/>
       </svg>
       <div>
-        <strong>BG Remover <span style="font-size: 11px; font-weight: normal; color: var(--muted); vertical-align: middle;">v1.5.4</span></strong>
+        <strong>BG Remover <span style="font-size: 11px; font-weight: normal; color: var(--muted); vertical-align: middle;">v1.5.5</span></strong>
         <small>Free · works offline · your photos stay on this computer</small>
       </div>
     </div>
@@ -189,6 +190,12 @@
     </aside>
   </main>
 
+  <footer class="app-footer">
+    <button class="creator-credit" type="button" data-dialog="dialog-about" aria-label="About BG Remover, crafted with love by NasirPintu">
+      Crafted with <span class="creator-credit-heart" aria-hidden="true">❤️</span> by <strong>NasirPintu</strong>
+    </button>
+  </footer>
+
   <div id="drop-overlay" hidden>Drop images to add them</div>
 
   <!-- Modals -->
@@ -205,28 +212,66 @@
     </div>
   </dialog>
 
-  <dialog id="dialog-about" class="modal">
-    <div class="modal-head"><h2>About BG Remover</h2><button class="modal-close">×</button></div>
-    <div class="modal-body">
-      <p><strong>Version 1.5.4</strong></p>
-      <p>A free, open-source background removal tool that runs 100% locally on your device.</p>
-      <p><strong>Privacy First:</strong> Your photos are never uploaded to a server. The AI runs directly inside your browser or desktop app using ONNX Runtime and WebGPU.</p>
-      <p><strong>Credits:</strong></p>
-      <ul>
-        <li>Fast Model: U2Netp (Apache 2.0)</li>
-        <li>High Quality Model: BiRefNet lite (MIT)</li>
-        <li>Engine: onnxruntime-web</li>
-        <li>Created by NuroTraders</li>
-      </ul>
+  <dialog id="dialog-about" class="modal about-modal">
+    <div class="modal-head"><h2>About & Credits</h2><button class="modal-close" aria-label="Close dialog">×</button></div>
+    <div class="modal-body about-body">
+      <section class="creator-hero">
+        <div class="creator-avatar-wrap">
+          <span class="creator-avatar-fallback" aria-hidden="true">NP</span>
+          <img id="creator-photo" class="creator-avatar" src="nasirpintu.jpg" alt="NasirPintu" />
+        </div>
+        <div class="creator-meta">
+          <p class="creator-kicker">Crafted with ❤️ by NasirPintu</p>
+          <h3 class="creator-name">NasirPintu</h3>
+          <p class="creator-subtitle">Mohammad Nasiruddin Pintu · Creator & Product Architect</p>
+          <p class="creator-bio">Building free, private-by-design tools that keep useful work on your device without subscriptions or tracking.</p>
+        </div>
+      </section>
+
+      <section class="about-section">
+        <h3 class="about-section-label">Connect with NasirPintu</h3>
+        <div class="creator-socials">
+          <a href="https://github.com/nasiropintu" target="_blank" rel="noopener noreferrer"><span><strong>GitHub</strong><small>@nasiropintu</small></span><span aria-hidden="true">↗</span></a>
+          <a href="https://x.com/nasiropintu" target="_blank" rel="noopener noreferrer"><span><strong>X</strong><small>@nasiropintu</small></span><span aria-hidden="true">↗</span></a>
+          <a href="https://www.instagram.com/the_np2/" target="_blank" rel="noopener noreferrer"><span><strong>Instagram</strong><small>@the_np2</small></span><span aria-hidden="true">↗</span></a>
+          <a href="https://www.facebook.com/mohammadnasiruddin.pintu/" target="_blank" rel="noopener noreferrer"><span><strong>Facebook</strong><small>mohammadnasiruddin.pintu</small></span><span aria-hidden="true">↗</span></a>
+        </div>
+      </section>
+
+      <section class="about-section">
+        <h3 class="about-section-label">About BG Remover</h3>
+        <p><strong>Version 1.5.5</strong> · Free, private background removal for product photos and everyday images.</p>
+        <p>Your images are processed on your device and are not uploaded. Internet is used when you download an optional high-quality model or check for Windows app updates.</p>
+      </section>
+
+      <section class="about-section">
+        <h3 class="about-section-label">Models & open-source credits</h3>
+        <ul class="credits-list">
+          <li><strong><a href="https://github.com/xuebinqin/U-2-Net" target="_blank" rel="noopener noreferrer">U²-Net / U2Netp</a></strong><span>Built-in fast model · Apache 2.0</span></li>
+          <li><strong><a href="https://huggingface.co/shozebDev/birefnet-lite-512-onnx" target="_blank" rel="noopener noreferrer">BiRefNet Lite</a></strong><span>Optional high-quality model · MIT</span></li>
+          <li><strong><a href="https://github.com/microsoft/onnxruntime" target="_blank" rel="noopener noreferrer">ONNX Runtime Web</a></strong><span>On-device machine-learning runtime</span></li>
+          <li><strong><a href="https://www.electronjs.org/" target="_blank" rel="noopener noreferrer">Electron</a></strong><span>Windows desktop application framework</span></li>
+          <li><strong><a href="https://github.com/electron-userland/electron-builder/tree/master/packages/electron-updater" target="_blank" rel="noopener noreferrer">electron-updater</a></strong><span>Windows app update support</span></li>
+        </ul>
+        <p class="credits-note">Each project and model remains under its own license.</p>
+      </section>
+
+      <div class="privacy-notice"><span aria-hidden="true">✓</span><p><strong>Privacy first by design.</strong> No telemetry and no image uploads. Processing stays on your device.</p></div>
     </div>
   </dialog>
 
   <dialog id="dialog-changelog" class="modal">
     <div class="modal-head"><h2>Change Log</h2><button class="modal-close">×</button></div>
     <div class="modal-body">
+      <h3>v1.5.5 - NasirPintu Branding</h3>
+      <ul>
+        <li>Added the creator profile, social links, and persistent “Crafted with ❤️ by NasirPintu” About shortcut.</li>
+        <li>Added project-specific model and open-source credits.</li>
+      </ul>
       <h3>v1.5.4 - Windows Updater Packaging</h3>
       <ul>
         <li>Fixed packaging of the Windows auto-updater and strengthened the packaged app smoke check.</li>
+        <li>Added NasirPintu creator attribution and project-specific model and library credits.</li>
       </ul>
       <h3>v1.5.3 - Optional High Quality Model</h3>
       <ul>

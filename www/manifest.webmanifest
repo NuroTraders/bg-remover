@@ -1,7 +1,7 @@
 {
   "name": "BG Remover",
   "short_name": "BG Remover",
-  "description": "Free, offline background remover",
+  "description": "Free, private background removal, crafted with care by NasirPintu",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
